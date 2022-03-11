@@ -1,5 +1,7 @@
 module Expr where
 
+import Data.Either
+
 import Parsing
 
 type Name = String
@@ -15,6 +17,18 @@ data Expr = Add Expr Expr
 data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
   deriving Show
+
+data Value = IntVal Int| FloatVal Float| StrVal String| Bool Bool|Null
+  deriving Eq
+
+-- data Error = 
+
+instance Show Value where
+  show (Int i)      = show i
+  show (Float f)    = show f 
+  show (str s)      = show s
+  show (Bool b)     = show b 
+  show Null         = "NULL"
 
 eval :: [(Name, Int)] -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
