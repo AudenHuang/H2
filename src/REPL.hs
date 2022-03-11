@@ -16,7 +16,8 @@ updateVars = undefined
 
 -- Return a new set of variables with the given name removed
 dropVar :: Name -> [(Name, Int)] -> [(Name, Int)]
-dropVar = undefined
+dropVar name [] = []
+dropVar name tuples = [a | a <- tuples, fst a /= name]
 
 process :: LState -> Command -> IO ()
 process st (Set var e) 
