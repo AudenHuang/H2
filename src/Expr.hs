@@ -26,7 +26,7 @@ data Value = IntVal Int| FloatVal Float| StrVal String| Bool Bool|Null
 instance Show Value where
   show (Int i)      = show i
   show (Float f)    = show f 
-  show (str s)      = show s
+  show (StrVal s)      = show s
   show (Bool b)     = show b 
   show Null         = "NULL"
 
