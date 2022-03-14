@@ -9,6 +9,9 @@ type Name = String
 -- At first, 'Expr' contains only addition, conversion to strings, and integer
 -- values. You will need to add other operations, and variables
 data Expr = Add Expr Expr
+          | Sub Expr Expr
+          | Mult Expr Expr
+          | Div Expr Expr
           | ToString Expr
           | Val Int
   deriving Show
@@ -43,11 +46,14 @@ showTree (Node (name, value) lt rt) = showTree lt ++ [(name, value)] ++ showTree
 
 eval :: BinTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
-        Either Error Value -- Result (if no errors such as missing variables)
+        Maybe Value -- Result (if no errors such as missing variables)
         
 -- need to redefine the following functions with bintree
 eval vars (Val x) = Just x -- for values, just give the value directly
 eval vars (Add x y) = Nothing -- return an error (because it's not implemented yet!)
+eval vars (Sub x y) = Nothing
+eval vars (Mult x y) = Nothing
+eval vars (Div x y) = Nothing
 eval vars (ToString x) = Nothing
 
 digitToInt :: Char -> Int
@@ -70,7 +76,7 @@ pExpr = do t <- pTerm
               return (Add t e)
             ||| do char '-'
                    e <- pExpr
-                   error "Subtraction not yet implemented!" 
+                   return (Sub t e)
                  ||| return t
 
 pFactor :: Parser Expr
@@ -87,10 +93,10 @@ pTerm :: Parser Expr
 pTerm = do f <- pFactor
            do char '*'
               t <- pTerm
-              error "Multiplication not yet implemented" 
+              return (Mult f t)
             ||| do char '/'
                    t <- pTerm
-                   error "Division not yet implemented" 
+                   return (Div f t)
                  ||| return f
 
 pQuit :: Parser Command
