@@ -127,9 +127,9 @@ int                           =  do char '-'
 
 floatp                        :: Parser Float
 floatp                        =  do i <- int 
-                                   char '.'
-                                   d <- nat
-                                   return (read(show i ++ "." ++ show d))
+                                    char '.'
+                                    d <- nat
+                                    return (read(show i ++ "." ++ show d))
 
 space                         :: Parser ()
 space                         =  do many (sat isSpace)
@@ -155,7 +155,7 @@ integer                       :: Parser Int
 integer                       =  token int
 
 float                         :: Parser Float
-float                         =  token flaotp
+float                         =  token floatp
 
 symbol                        :: String -> Parser String
 symbol xs                     =  token (string xs)
