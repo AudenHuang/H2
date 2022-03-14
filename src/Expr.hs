@@ -21,7 +21,8 @@ data Command = Set Name Expr -- assign an expression to a variable name
 data Value = IntVal Int| FloatVal Float| StrVal String| Bool Bool|Null
   deriving Eq
 
--- data Error = 
+
+data Error = Nothing -- Not yet define
 
 instance Show Value where
   show (Int i)      = show i
@@ -31,9 +32,19 @@ instance Show Value where
   show Null         = "NULL"
 
 data BinTree = Leaf | Node (Name, Value) BinTree BinTree
-eval :: [(Name, Int)] -> -- Variable name to value mapping
+
+instance Show BinTree where
+  show bt = show (showTree bt)
+  
+showTree :: BinTree -> [(Name, Value)]
+showTree Leaf 
+showTree (Node (name, value) lt rt) = showTree lt ++ [(name, value)] ++ showTree rt
+
+eval :: BinTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
-        Maybe Int -- Result (if no errors such as missing variables)
+        Either Error Value -- Result (if no errors such as missing variables)
+        
+-- need to redefine the following functions with bintree
 eval vars (Val x) = Just x -- for values, just give the value directly
 eval vars (Add x y) = Nothing -- return an error (because it's not implemented yet!)
 eval vars (ToString x) = Nothing
