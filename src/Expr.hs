@@ -18,17 +18,17 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
   deriving Show
 
-data Value = IntVal Int| FloatVal Float| StrVal String| Bool Bool|Null
+data Value = IntVal Int| FloatVal Float| StrVal String| BoolVal Bool|Null
   deriving Eq
 
 
 data Error = Nothing -- Not yet define
 
 instance Show Value where
-  show (Int i)      = show i
-  show (Float f)    = show f 
+  show (IntVal i)      = show i
+  show (FloatVal f)    = show f 
   show (StrVal s)      = show s
-  show (Bool b)     = show b 
+  show (BoolVal b)     = show b 
   show Null         = "NULL"
 
 data BinTree = Leaf | Node (Name, Value) BinTree BinTree
