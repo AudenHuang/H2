@@ -26,10 +26,10 @@ data Error = Nothing -- Not yet define
 
 instance Show Value where
   show (IntVal i)      = show i
-  show (FloatVal f)    = show f 
+  show (FloatVal f)    = show f
   show (StrVal s)      = show s
-  show (BoolVal b)     = show b 
-  show Null         = "NULL"
+  show (BoolVal b)     = show b
+  show Null            = "NULL"
 
 data BinTree = Leaf | Node (Name, Value) BinTree BinTree
 
@@ -37,7 +37,7 @@ instance Show BinTree where
   show bt = show (showTree bt)
   
 showTree :: BinTree -> [(Name, Value)]
-showTree Leaf 
+showTree Leaf                       = []
 showTree (Node (name, value) lt rt) = showTree lt ++ [(name, value)] ++ showTree rt
 
 eval :: BinTree -> -- Variable name to value mapping
