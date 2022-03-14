@@ -125,11 +125,11 @@ int                           =  do char '-'
                                     return (-n)
                                   ||| nat
 
-float                        :: Parser Float
-float                        =  do i <- int 
-                                   char '.'
-                                   d <- nat
-                                   return (read(show i ++ "." ++ show d))
+double                        :: Parser Float
+double                        =  do i <- int 
+                                    char '.'
+                                    d <- nat
+                                    return (read(show i ++ "." ++ show d))
 
 space                         :: Parser ()
 space                         =  do many (sat isSpace)
