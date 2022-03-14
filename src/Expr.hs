@@ -16,6 +16,7 @@ data Expr = Add Expr Expr
 -- These are the REPL commands
 data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
+             | Quit
   deriving Show
 
 data Value = IntVal Int| FloatVal Float| StrVal String| BoolVal Bool|Null
@@ -91,3 +92,7 @@ pTerm = do f <- pFactor
                    t <- pTerm
                    error "Division not yet implemented" 
                  ||| return f
+
+pQuit :: Parser Command
+pQuit = do string "quit"
+           return Quit
