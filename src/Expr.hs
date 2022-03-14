@@ -39,22 +39,22 @@ data BinTree = Leaf | Node (Name, Value) BinTree BinTree
 
 instance Show BinTree where
   show bt = show (showTree bt)
-  
+
 showTree :: BinTree -> [(Name, Value)]
 showTree Leaf                       = []
 showTree (Node (name, value) lt rt) = showTree lt ++ [(name, value)] ++ showTree rt
 
-eval :: BinTree -> -- Variable name to value mapping
+eval :: [(Name, Value)] -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Maybe Value -- Result (if no errors such as missing variables)
-        
+
 -- need to redefine the following functions with bintree
-eval vars (Val x) = Just x -- for values, just give the value directly
-eval vars (Add x y) = Nothing -- return an error (because it's not implemented yet!)
-eval vars (Sub x y) = Nothing
-eval vars (Mult x y) = Nothing
-eval vars (Div x y) = Nothing
-eval vars (ToString x) = Nothing
+eval vars (Val x) = Just (IntVal(read (show x))) -- for values, just give the value directly
+eval vars (Add x y) = Just (IntVal((+) (read (show x)) (read (show y)))) -- return an error (because it's not implemented yet!)
+eval vars (Sub x y) = Just (IntVal((-) (read (show x)) (read (show y))))
+eval vars (Mult x y) = Just (IntVal((*) (read (show x)) (read (show y))))
+eval vars (Div x y) = Just (FloatVal((/) (read (show x)) (read (show y))))
+eval vars (ToString x) = Just (StrVal(show x))
 
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
@@ -83,7 +83,7 @@ pFactor :: Parser Expr
 pFactor = do d <- digit
              return (Val (digitToInt d))
            ||| do v <- letter
-                  error "Variables not yet implemented" 
+                  error "Variables not yet implemented"
                 ||| do char '('
                        e <- pExpr
                        char ')'
