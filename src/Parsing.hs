@@ -1,6 +1,7 @@
 {-
 Functional parsing library from chapter 8 of Programming in Haskell,
 Graham Hutton, Cambridge University Press, 2007.
+
 Minor changes by Edwin Brady
 -}
 
@@ -125,11 +126,11 @@ int                           =  do char '-'
                                     return (-n)
                                   ||| nat
 
-floatp                        :: Parser Float
-floatp                        =  do i <- int 
+flt                           :: Parser Float
+flt                           =  do x <- int
                                     char '.'
-                                    d <- nat
-                                    return (read(show i ++ "." ++ show d))
+                                    y <- nat
+                                    return (read (show x ++ "." ++ show y))
 
 space                         :: Parser ()
 space                         =  do many (sat isSpace)
@@ -154,8 +155,9 @@ natural                       =  token nat
 integer                       :: Parser Int
 integer                       =  token int
 
-float                         :: Parser Float
-float                         =  token floatp
-
 symbol                        :: String -> Parser String
 symbol xs                     =  token (string xs)
+
+float                         :: Parser Float
+float                         =  token flt
+
