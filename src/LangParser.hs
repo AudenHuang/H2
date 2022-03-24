@@ -5,121 +5,116 @@ import Expr
 
 -- COMMAND AND EXPRESSION PARSER
 
--- Statement -> whileStmt | ifStmt | assignmentStmt | printStmt | quitStmt | functionCallStmt
-
 -- STATEMENT PARSER
 pStatement :: Parser Command
-pStatement = (do s <- pIfStmt
+pStatement = (do s <- pIf
                  return (s))
-        --      ||| (do s <- pIfStmt2
+        --      ||| (do s <- pIf2
         --              return (s))
-             ||| (do s <- pWhileStmt
+             ||| (do s <- pWhile
                      return (s))
-             ||| (do s <- pAssignmentStmt
+             ||| (do s <- pAssign
                      return (s))
-             ||| (do s <- pPrintStmt
+             ||| (do s <- pPrint
                      return (s))
-             ||| (do s <- pQuitStmt
+             ||| (do s <- pQuit
                      return (s))
-             ||| (do s <- pImportStmt
+             ||| (do s <- pImport
                      return (s))
-             ||| (do s <- pFun
+             ||| (do s <- pFunc
                      return (s))
-             ||| (do s <- pVoidFunCall
+             ||| (do s <- pVoidFuncCall
                      return (s))
-             ||| (do s <- pReturnStmt
+             ||| (do s <- pReturn
                      return (s))
              ||| (do s <- pExpr_
                      return (s))
 
--- Block of statements (if while functions)
-pStmtBlock :: Parser [Command]
-pStmtBlock = do symbol "{"
-                stmts <- many pStatement
-                symbol "}"
-                return stmts
+-- Block of statements (if while functions)    
+pBlock :: Parser [Command]
+pBlock = do symbol "{"
+            s <- many pStatement
+            symbol "}"
+            return s
 
 -- If statements
-pIfStmt :: Parser Command
-pIfStmt = do string "if"
-             space
-             expression <- pBoolExpr
-             stmtBlock <- pStmtBlock
-             string "else"
-             eStmtBlock <- pStmtBlock
-             return (If expression stmtBlock eStmtBlock)
+pIf :: Parser Command
+pIf = do string "if"
+         space
+         expression <- pBoolOr
+         Block <- pBlock
+         string "else"
+         eBlock <- pBlock
+         return (If expression Block eBlock)
 
--- pIfStmt2 :: Parser Command
--- pIfStmt2 = do string "if"
+-- pIf2 :: Parser Command
+-- pIf2 = do string "if"
 --               space
---               expression <- pBoolExpr
---               stmtBlock <- pStmtBlock
---               return (If2 expression stmtBlock)
+--               expression <- pBoolOr
+--               Block <- pBlock
+--               return (If2 expression Block)
 
--- While statements
-pWhileStmt :: Parser Command
-pWhileStmt = do string "while"
-                space
-                expression <- pBoolExpr
-                space
-                stmtBlock <- pStmtBlock
-                return (While expression stmtBlock)
+-- While 
+pWhile :: Parser Command
+pWhile = do string "while"
+            space
+            expression <- pBoolOr
+            space
+            Block <- pBlock
+            return (While expression Block)
 
--- Assignment statements
-pAssignmentStmt :: Parser Command
-pAssignmentStmt = do t <- identifier
+-- Assign statements
+pAssign :: Parser Command
+pAssign = do t <- identifier
                      symbol "="
                      (do e <- pExpr
                          return (Set t e)
-                       ||| do e <- pBoolExpr
+                       ||| do e <- pBoolOr
                               return (Set t e))
+                --        ||| do e <- p
+                --               return (Set t e))
 
 -- Print statements
-pPrintStmt :: Parser Command
-pPrintStmt = do string "print"
-                space
-                (do e <- pExpr
-                    return (Print e)
-                 ||| do e <- pBoolExpr
-                        return (Print e))
-
--- Quit statements
-pQuitStmt :: Parser Command
-pQuitStmt = do string "quit"
-               return Quit
+pPrint :: Parser Command
+pPrint = do string "print"
+            space
+            (do e <- pExpr
+                return (Print e)
+             ||| do e <- pBoolOr
+                    return (Print e))
 
 -- Import statements
-pImportStmt :: Parser Command
-pImportStmt = do string "import"
-                 space
-                 ch <- char '"' ||| char '\''
-                 filepath <- many (sat (/= ch))
-                 char ch
-                 return (Import filepath)
+pImport :: Parser Command
+pImport = do string "import"
+             space
+             ch <- char '"' ||| char '\''
+             filepath <- many (sat (/= ch))
+             char ch
+             return (Import filepath)
 
 -- Return statements
-pReturnStmt :: Parser Command
-pReturnStmt = do string "return"
-                 space
-                 e <- pExpr
-                 return (Return e)
+pReturn :: Parser Command
+pReturn = do string "return"
+             space
+             e <- pExpr
+             return (Return e)
 
 -- FUNCTION PARSER
 -- Function Call statement
-pFunCall :: Parser Expr
-pFunCall = do name <- identifier
-              args <- pFunCallArgs
-              return (FunCallExpr name args)
+pFuncCall :: Parser Expr
+pFuncCall = do name <- identifier
+               args <- pFuncCallArgs
+               return (FuncCallExpr name args)
 
-pVoidFunCall :: Parser Command
-pVoidFunCall = do name <- identifier
-                  args <- pFunCallArgs
-                  return (VoidFunCall name args)
+pVoidFuncCall :: Parser Command
+pVoidFuncCall = do name <- identifier
+                   args <- pFuncCallArgs
+                   return (VoidFuncCall name args)
 
-pFunCallArgs :: Parser [Expr]
-pFunCallArgs = do symbol "("
-                  i <- (pCSExpressions [])
-                  return (i)
+pFuncCallArgs :: Parser [Expr]
+pFuncCallArgs = do symbol "("
+                   i <- (pCSExpressions [])
+                   return (i)
 
 -- Comma seperated expressions
 pCSExpressions :: [Expr] -> Parser [Expr]
@@ -135,13 +130,13 @@ pCSExpressions ys = (do symbol ","
 
 
 -- Function definition statement
-pFun :: Parser Command
-pFun = do string "fun"
-          name <- identifier
-          symbol "("
-          vars <- pCSVar []      -- This absorbs the ")"
-          commands <- pStmtBlock
-          return (Fun name vars commands)
+pFunc :: Parser Command
+pFunc = do string "fun"
+           name <- identifier
+           symbol "("
+           vars <- pCSVar []      -- This absorbs the ")"
+           commands <- pBlock
+           return (Func name vars commands)
 
 pCSVar :: [Name] -> Parser [Name]
 pCSVar [] = (do symbol ")"
@@ -156,7 +151,7 @@ pCSVar ys = (do symbol ","
 
 -- For expressions to be printed
 pExpr_ :: Parser Command
-pExpr_ = (do Expr <$> pBoolExpr) ||| (do Expr <$> pExpr)
+pExpr_ = (do Expr <$> pBoolOr) ||| (do Expr <$> pExpr)
 
 -- EXPRESSION Parsers
 -- Numeric/String expressions
@@ -176,7 +171,7 @@ pExpr = (do symbol "input"
                           ||| return t)
 
 pFactor :: Parser Expr
-pFactor = do f <- pFunCall
+pFactor = do f <- pFuncCall
              return f
           ||| do f <- float
                  return (Val (FltVal f))
@@ -228,8 +223,8 @@ pString = do ch <- char '"' ||| char '\''
 
 
 -- Boolean Expressions
-pBoolFactor :: Parser Expr
-pBoolFactor = (do e <- pExpr
+pBool       :: Parser Expr
+pBool       = (do e <- pExpr
                   symbol "<"
                   e2 <- pExpr
                   return (Lt e e2))
@@ -256,31 +251,31 @@ pBoolFactor = (do e <- pExpr
               ||| (do e <- identifier
                       return (Var e))
 
-pBoolFact :: Parser Expr
-pBoolFact = (do symbol "True"
+pBoolN   :: Parser Expr
+pBoolN   = (do symbol "True"
                 return (Val (BoolVal True))
             ||| do symbol "False"
                    return (Val (BoolVal False)))
-                ||| (do f <- pBoolFactor
+                ||| (do f <- pBool
                         return f)
                 ||| (do symbol "!"
-                        f <- pBoolFact
+                        f <- pBoolN
                         return (Not f))
                 ||| (do symbol "("
-                        f <- pBoolExpr
+                        f <- pBoolOr
                         symbol ")"
                         return f)
 
-pBoolTerm :: Parser Expr
-pBoolTerm = do f <- pBoolFact
+pBoolAnd  :: Parser Expr
+pBoolAnd  = do f <- pBoolN
                (do symbol "&&"
-                   f2 <- pBoolFact
+                   f2 <- pBoolN
                    return (And f f2))
                  ||| return f
 
-pBoolExpr :: Parser Expr
-pBoolExpr = do f <- pBoolTerm
+pBoolOr   :: Parser Expr
+pBoolOr   = do f <- pBoolAnd
                (do symbol "||"
-                   f2 <- pBoolTerm
+                   f2 <- pBoolAnd
                    return (Or f f2))
                  ||| return f

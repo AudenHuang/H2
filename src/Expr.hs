@@ -6,46 +6,44 @@ type Name = String
 type ErrMsg = String
 type ExprName = String
 
-data Expr = Add Expr Expr
+data Expr = Val Value
+          | Var Name
+          -- math operation 
+          | Add Expr Expr
           | Sub Expr Expr
           | Mul Expr Expr
           | Div Expr Expr
-
           | Abs Expr
           | Mod Expr Expr
           | Pow Expr Expr
-
-          | Val Value
-          | Var Name
-
+          -- string concat
           | Concat Expr Expr
 
           | Compare Expr Expr
-
-          | FunCallExpr Name [Expr] -- Fun is function, Name is name of function, [Value] are arguments
-          | InputExpr
-
-          | Not Expr
-          | And Expr Expr
-          | Or Expr Expr
           | Eq Expr Expr
           | Ne Expr Expr
           | Gt Expr Expr
           | Lt Expr Expr
           | Gte Expr Expr
           | Lte Expr Expr
+
+          | FuncCallExpr Name [Expr] --Name is name of function
+          | InputExpr
+
+          | Not Expr
+          | And Expr Expr
+          | Or Expr Expr
   deriving (Show, Eq)
 
 -- These are the REPL commands
 data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
-             | Quit          -- quit the program
              | While Expr [Command]
              | If Expr [Command] [Command]
              -- | If2 Expr [Command]
              | Import FilePath
-             | Fun Name [Name] [Command] -- Name -> name of function, [Name] -> Argument variables, [Command] -> Commands in the function
-             | VoidFunCall Name [Expr]
+             | Func Name [Name] [Command] -- Name -> name of function, [Name] -> Argument variables, [Command] -> Commands in the function
+             | VoidFuncCall Name [Expr]
              | Return Expr
              | Expr Expr
   deriving Show
@@ -94,7 +92,7 @@ eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Right not_string, _)                -> Left (ExprErr "Concat" (show not_string ++ " is not a string"))
   (Left eval_err, _)                   -> Left eval_err
 eval vars InputExpr         = Right Input
-eval vars (FunCallExpr name args) = case name of
+eval vars (FuncCallExpr name args) = case name of
                                      "toString" -> toString args
                                        where toString :: [Expr] -> Either EvalError Value
                                              toString (intExpression:[])  = case eval vars intExpression of
