@@ -188,6 +188,7 @@ repl = do st <- lift get
                         (Set var e) -> do st' <- process st cmd
                                           lift $ put st' {wordList = var : wordList st'}
                                           repl
+                        Quit -> return() 
                         (Import filepath) -> do text <- lift $ lift (readFile filepath)
                                                 lift $ put st {commands = lines text ++ commands st}
                                                 repl

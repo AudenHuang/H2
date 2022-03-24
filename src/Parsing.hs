@@ -172,6 +172,8 @@ pStatement = (do s <- pIf
         --              return (s))
              ||| (do s <- pWhile
                      return (s))
+             ||| (do s <- pQuit
+                     return (s))
              ||| (do s <- pAssign
                      return (s))
              ||| (do s <- pPrint
@@ -230,6 +232,10 @@ pAssign = do t <- identifier
                         return (Set t e))
                 --        ||| do e <- p
                 --               return (Set t e))
+
+pQuit :: Parser Command
+pQuit = do string "quit"
+           return Quit
 
 -- Print statements
 pPrint :: Parser Command

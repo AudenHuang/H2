@@ -46,6 +46,7 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | VoidFuncCall Name [Expr]
              | Return Expr
              | Expr Expr
+             | Quit
   deriving Show
 
 data EvalError = ExprErr ExprName ErrMsg
