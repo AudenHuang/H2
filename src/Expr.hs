@@ -125,11 +125,11 @@ eval vars (Mod x y)           = case (eval vars x, eval vars y) of
                                      (Right not_int, _) -> Left (ExprErr "Mod" (show not_int ++ " is not an integer"))
                                      (Left eval_err, _) -> Left eval_err
 eval vars expr = case expr of
-  Add e e2 -> mathOP vars expr "Add"
-  Sub e e2 -> mathOP vars expr "Sub"
-  Mul e e2 -> mathOP vars expr "Mul"
-  Div e e2 -> mathOP vars expr "Div"
-  Pow e e2 -> mathOP vars expr "Pow"
+  Add e e2 -> mathOP vars expr
+  Sub e e2 -> mathOP vars expr
+  Mul e e2 -> mathOP vars expr
+  Div e e2 -> mathOP vars expr
+  Pow e e2 -> mathOP vars expr
   Lt  e e2 -> boolOp  vars expr
   Gt  e e2 -> boolOp  vars expr
   Lte e e2 -> boolOp  vars expr
@@ -142,16 +142,16 @@ eval vars expr = case expr of
   otherOp  -> Left (ExprErr (show otherOp) ("Unknown operations: " ++ show otherOp))
 
 mathOP :: BTree -> Expr -> Either EvalError Value
-mathOP vars expr name = case (eval vars x, eval vars y) of
+mathOP vars expr = case (eval vars x, eval vars y) of
   (Right (FltVal a), Right (FltVal b)) -> Right (FltVal (func a b))
   (Right (FltVal f), Right (IntVal i)) -> Right (FltVal (func f (fromIntegral i)))
   (Right (IntVal i), Right (FltVal f)) -> Right (FltVal (func (fromIntegral i) f))
   (Right (IntVal a), Right (IntVal b)) -> Right (IntVal (round (func (fromIntegral a) (fromIntegral b))))
-  (Right (FltVal f), Right not_num)    -> Left (ExprErr name (show not_num ++ " is not a number"))
-  (Right (IntVal i), Right not_num)    -> Left (ExprErr name (show not_num ++ " is not a number"))
+  (Right (FltVal f), Right not_num)    -> Left (ExprErr "mathOP" (show not_num ++ " is not a number"))
+  (Right (IntVal i), Right not_num)    -> Left (ExprErr "mathOP" (show not_num ++ " is not a number"))
   (Right (FltVal f), Left eval_err)    -> Left eval_err
   (Right (IntVal f), Left eval_err)    -> Left eval_err
-  (Right not_num, _)                   -> Left (ExprErr name (show not_num ++ " is not a number"))
+  (Right not_num, _)                   -> Left (ExprErr "mathOP" (show not_num ++ " is not a number"))
   (Left eval_err, _)                     -> Left eval_err
   where
     (func, x, y) = case expr of

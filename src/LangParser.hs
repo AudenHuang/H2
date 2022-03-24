@@ -17,8 +17,6 @@ pStatement = (do s <- pIf
                      return (s))
              ||| (do s <- pPrint
                      return (s))
-             ||| (do s <- pQuit
-                     return (s))
              ||| (do s <- pImport
                      return (s))
              ||| (do s <- pFunc
@@ -30,7 +28,7 @@ pStatement = (do s <- pIf
              ||| (do s <- pExpr_
                      return (s))
 
--- Block of statements (if while functions)    
+-- block of statements (if while functions)    
 pBlock :: Parser [Command]
 pBlock = do symbol "{"
             s <- many pStatement
@@ -42,17 +40,17 @@ pIf :: Parser Command
 pIf = do string "if"
          space
          expression <- pBoolOr
-         Block <- pBlock
+         block <- pBlock
          string "else"
          eBlock <- pBlock
-         return (If expression Block eBlock)
+         return (If expression block eBlock)
 
 -- pIf2 :: Parser Command
 -- pIf2 = do string "if"
 --               space
 --               expression <- pBoolOr
---               Block <- pBlock
---               return (If2 expression Block)
+--               block <- pBlock
+--               return (If2 expression block)
 
 -- While 
 pWhile :: Parser Command
@@ -60,8 +58,8 @@ pWhile = do string "while"
             space
             expression <- pBoolOr
             space
-            Block <- pBlock
-            return (While expression Block)
+            block <- pBlock
+            return (While expression block)
 
 -- Assign statements
 pAssign :: Parser Command
@@ -253,7 +251,7 @@ pBool       = (do e <- pExpr
 
 pBoolN   :: Parser Expr
 pBoolN   = (do symbol "True"
-                return (Val (BoolVal True))
+               return (Val (BoolVal True))
             ||| do symbol "False"
                    return (Val (BoolVal False)))
                 ||| (do f <- pBool

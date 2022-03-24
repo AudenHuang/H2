@@ -108,8 +108,8 @@ process st (While e block) = loop st block e
           Right (BoolVal False) -> return state
           _                    -> do outputStrLn "Invalid boolean value"
                                      return state
-process st (Fun name vars commands) = return st {functions = updateFuns name vars commands (functions st)}
-process st (VoidFunCall name exprs) = case fun of
+process st (Func name vars commands) = return st {functions = updateFuns name vars commands (functions st)}
+process st (VoidFuncCall name exprs) = case fun of
   [] -> return st
   [(fname, vnames, commands)] -> if (length exprs == length vnames && blockIsVoid commands)
                                     then do sState <- assignValues scopedState vnames exprs
@@ -186,17 +186,15 @@ repl = do st <- lift get
                 case parse pStatement input of
                     [(cmd, "")] -> -- Must parse entire input
                       case cmd of
-                        Quit -> do outputStrLn "Bye"
-                                   return ()
                         (Set var e) -> do st' <- process st cmd
                                           lift $ put st' {wordList = var : wordList st'}
                                           repl
                         (Import filepath) -> do text <- lift $ lift (readFile filepath)
                                                 lift $ put st {commands = lines text ++ commands st}
                                                 repl
-                        (Fun name _ _)    -> do st' <- process st cmd
-                                                lift $ put st' {wordList = (name ++ "(") : wordList st'}
-                                                repl
+                        (Func name _ _)    -> do st' <- process st cmd
+                                                 lift $ put st' {wordList = (name ++ "(") : wordList st'}
+                                                 repl
                         (Expr expr) -> do process st (Print expr)
                                           repl
                         _ -> do st' <- process st cmd
