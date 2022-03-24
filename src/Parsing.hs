@@ -126,8 +126,8 @@ int                           =  do char '-'
                                     return (-n)
                                   ||| nat
 
-flt                           :: Parser Float
-flt                           =  do x <- int
+parseFloat                    :: Parser Float
+parseFloat                    =  do x <- int
                                     char '.'
                                     y <- nat
                                     return (read (show x ++ "." ++ show y))
@@ -159,5 +159,5 @@ symbol                        :: String -> Parser String
 symbol xs                     =  token (string xs)
 
 float                         :: Parser Float
-float                         =  token flt
+float                         =  token parseFloat
 
