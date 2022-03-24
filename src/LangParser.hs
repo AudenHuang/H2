@@ -66,11 +66,11 @@ pWhile = do string "while"
 -- Assign statements
 pAssign :: Parser Command
 pAssign = do t <- identifier
-                     symbol "="
-                     (do e <- pExpr
-                         return (Set t e)
-                       ||| do e <- pBoolOr
-                              return (Set t e))
+             symbol "="
+             (do e <- pExpr
+                 return (Set t e)
+                 ||| do e <- pBoolOr
+                        return (Set t e))
                 --        ||| do e <- p
                 --               return (Set t e))
 
