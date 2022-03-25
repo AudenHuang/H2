@@ -162,7 +162,6 @@ symbol xs                     =  token (string xs)
 float                         :: Parser Float
 float                         =  token parseFloat
 
--- COMMAND AND EXPRESSION PARSER
 
 -- STATEMENT PARSER
 pStatement :: Parser Command
@@ -178,15 +177,13 @@ pStatement = (do s <- pIf
                      return (s))
              ||| (do s <- pPrint
                      return (s))
-             ||| (do s <- pImport
-                     return (s))
              ||| (do s <- pFunc
                      return (s))
              ||| (do s <- pVoidFuncCall
                      return (s))
              ||| (do s <- pReturn
                      return (s))
-             ||| (do s <- pExpr_
+             ||| (do s <- pExpr2
                      return (s))
 
 -- block of statements (if while functions)    
@@ -196,7 +193,8 @@ pBlock = do symbol "{"
             symbol "}"
             return s
 
--- If statements
+--Parsers for different type of statment
+-- If 
 pIf :: Parser Command
 pIf = do string "if"
          space
@@ -246,14 +244,6 @@ pPrint = do string "print"
              ||| do e <- pBoolOr
                     return (Print e))
 
--- Import statements
-pImport :: Parser Command
-pImport = do string "import"
-             space
-             ch <- char '"' ||| char '\''
-             filepath <- many (sat (/= ch))
-             char ch
-             return (Import filepath)
 
 -- Return statements
 pReturn :: Parser Command
@@ -294,7 +284,7 @@ pCSExpressions ys = (do symbol ","
 
 -- Function definition statement
 pFunc :: Parser Command
-pFunc = do string "fun"
+pFunc = do string "def"
            name <- identifier
            symbol "("
            vars <- pCSVar []      -- This absorbs the ")"
@@ -312,9 +302,9 @@ pCSVar ys = (do symbol ","
                ||| (do symbol ")"
                        return (reverse ys))
 
--- For expressions to be printed
-pExpr_ :: Parser Command
-pExpr_ = (do Expr <$> pBoolOr) ||| (do Expr <$> pExpr)
+
+pExpr2 :: Parser Command
+pExpr2 = (do Expr <$> pBoolOr) ||| (do Expr <$> pExpr)
 
 -- EXPRESSION Parsers
 -- Numeric/String expressions
