@@ -167,8 +167,8 @@ float                         =  token parseFloat
 pStatement :: Parser Command
 pStatement = (do s <- pIf
                  return (s))
-        --      ||| (do s <- pIf2
-        --              return (s))
+             ||| (do s <- pIf2
+                     return (s))
              ||| (do s <- pWhile
                      return (s))
              ||| (do s <- pQuit
@@ -204,12 +204,18 @@ pIf = do string "if"
          eBlock <- pBlock
          return (If expression block eBlock)
 
--- pIf2 :: Parser Command
--- pIf2 = do string "if"
---               space
---               expression <- pBoolOr
---               block <- pBlock
---               return (If2 expression block)
+pRepeat :: Parser Command
+pRepeat = do string "repeat"
+          e <- pExpr
+          block <- pBlock
+          return (Repeat e block)
+
+pIf2 :: Parser Command
+pIf2 = do string "if"
+              space
+              expression <- pBoolOr
+              block <- pBlock
+              return (If2 expression block)
 
 -- While 
 pWhile :: Parser Command

@@ -95,15 +95,36 @@ process st (Print e) =
 process st (If e b1 b2) = case eval (vars st) e of
   Right (BoolVal True)  -> do processBlock st b1
   Right (BoolVal False) -> do processBlock st b2
-  _                    -> do outputStrLn "Invalid boolean value"
+  _                    -> do outputStrLn "Invalid if conditional"
                              return st
+process st (If2 e b1) = case eval (vars st) e of
+  Right (BoolVal True)  -> do processBlock st b1
+  Right (BoolVal False) -> do return st
+  _                     -> do outputStrLn "Invalid if conditional"
+                             return st
+
+process st (Repeat e block) = loop st block e
+  where loop :: State -> [Command] -> Expr -> InputT StateM State
+        do x <- (IntVal 0)
+           outputStrLn e   -- Test to see if I got the right e and block
+           outputStrLn block 
+           loop state cmds e = case eval (vars state) e of
+             Right (IntVal e)  -> do st' <- processBlock state cmds
+                                     x=x+1
+                                     loop st' cmds e
+             Right (FltVal e)  -> do e <- toInt(e)
+                                     x=x+1
+                                     loop st' cmds e
+             _                -> do outputStrLn "Invalid repeat statement"
+                                    return state
+
 process st (While e block) = loop st block e
   where loop :: State -> [Command] -> Expr -> InputT StateM State
         loop state cmds expr = case eval (vars state) expr of
           Right (BoolVal True)  -> do st' <- processBlock state cmds
                                       loop st' cmds expr
           Right (BoolVal False) -> return state
-          _                    -> do outputStrLn "Invalid boolean value"
+          _                    -> do outputStrLn "Invalid while conditional"
                                      return state
 process st (Func name vars commands) = return st {functions = updateFunctions name vars commands (functions st)}
 process st (VoidFuncCall name exprs) = case func of

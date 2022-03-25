@@ -40,7 +40,8 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
              | While Expr [Command]
              | If Expr [Command] [Command]
-             -- | If2 Expr [Command]
+             | Repeat Expr [Command]
+             | If2 Expr [Command]
              | Func Name [Name] [Command] -- Name -> name of function, [Name] -> Argument variables, [Command] -> Commands in the function
              | VoidFuncCall Name [Expr]
              | Return Expr
@@ -99,7 +100,7 @@ eval vars (FuncCallExpr name args) = case name of
                                                Right (IntVal i) -> (Right (StrVal (show i)))
                                                Right (FltVal f) -> (Right (StrVal (show f)))
                                                Right (StrVal s) -> (Right (StrVal s))
-                                               _               -> Left (ExprErr "toString" (show intExpression ++ " cannot be converted to string"))
+                                               _                -> Left (ExprErr "toString" (show intExpression ++ " cannot be converted to string"))
                                      "toInt"    -> toInt args
 
                                        where toInt :: [Expr] -> Either EvalError Value
@@ -110,6 +111,7 @@ eval vars (FuncCallExpr name args) = case name of
                                      "toFloat"  -> toFlt args
                                        where toFlt :: [Expr] -> Either EvalError Value
                                              toFlt (strExpression:[])  = case eval vars strExpression of
+                                               Right (IntVal i) -> Right (FltVal i)
                                                Right (StrVal i) -> Right (FltVal (read i :: Float))
                                                _               ->  Left (ExprErr "toFlt" (show args ++ " cannot be converted to float"))
                                      _          -> Right (FunCall name args)
