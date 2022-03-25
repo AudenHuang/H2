@@ -51,11 +51,11 @@ dropVar _name (Node (name, value) ltree rtree)
             Node (name_, value_) _ Leaf -> (name_, value_)
             Node (_, _) _ rtree -> largestVar rtree
 
-updateFuns :: Name -> [Name] -> [Command] -> [(Name, [Name], [Command])] -> [(Name, [Name], [Command])]
-updateFuns name _vars _commands [] = [(name, _vars, _commands)]
-updateFuns name _vars _commands ((n, v, c): funs)
+updateFunctions :: Name -> [Name] -> [Command] -> [(Name, [Name], [Command])] -> [(Name, [Name], [Command])]
+updateFunctions name _vars _commands [] = [(name, _vars, _commands)]
+updateFunctions name _vars _commands ((n, v, c): funs)
   | name == n = (name, _vars, _commands) : funs
-  | otherwise = (n, v, c) : updateFuns name _vars _commands funs
+  | otherwise = (n, v, c) : updateFunctions name _vars _commands funs
 
 process :: State -> Command -> InputT StateM State
 process st (Set var e) =
@@ -63,7 +63,7 @@ process st (Set var e) =
     case eval (vars st) e of
       Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
                                       return st -- error
-      Right Input -> do inpVal <- getInputLine ("Input > ")
+      Right Input -> do inpVal <- getInputLine "Input > "
                         case inpVal of
                          Just inp -> return (st {vars = updateVars var (StrVal inp) (vars st)})
                          Nothing -> return (st {vars = updateVars var (StrVal "") (vars st)})
@@ -80,7 +80,7 @@ process st (Print e) =
   do
     case eval (vars st) e of
          Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
-         Right Input -> do inpVal <- getInputLine ("Input > ")
+         Right Input -> do inpVal <- getInputLine "Input > "
                            case inpVal of
                                 Just inp -> do outputStrLn inp
                                 Nothing -> do outputStrLn ""
@@ -93,10 +93,8 @@ process st (Print e) =
     return st
 
 process st (If e b1 b2) = case eval (vars st) e of
-  Right (BoolVal True)  -> do st' <- processBlock st b1
-                              return st'
-  Right (BoolVal False) -> do st' <- processBlock st b2
-                              return st'
+  Right (BoolVal True)  -> do processBlock st b1
+  Right (BoolVal False) -> do processBlock st b2
   _                    -> do outputStrLn "Invalid boolean value"
                              return st
 process st (While e block) = loop st block e
@@ -107,10 +105,10 @@ process st (While e block) = loop st block e
           Right (BoolVal False) -> return state
           _                    -> do outputStrLn "Invalid boolean value"
                                      return state
-process st (Func name vars commands) = return st {functions = updateFuns name vars commands (functions st)}
+process st (Func name vars commands) = return st {functions = updateFunctions name vars commands (functions st)}
 process st (VoidFuncCall name exprs) = case fun of
   [] -> return st
-  [(fname, vnames, commands)] -> if (length exprs == length vnames && blockIsVoid commands)
+  [(fname, vnames, commands)] -> if length exprs == length vnames && blockIsVoid commands
                                     then do sState <- assignVals scopedState vnames exprs
                                             processBlock sState commands
                                             return st
@@ -132,8 +130,8 @@ processBlock st _           = return st
 
 processBlockRet :: (State, Either EvalError Expr) -> [Command] -> InputT StateM (State, Either EvalError Expr)
 processBlockRet (st, _) (Return e: _)   = return (st, Right e)
-processBlockRet (st, _) (cmd: [])   = do st' <- process st cmd
-                                         return (st', Left (ExprErr "Function call" "No return statement"))
+processBlockRet (st, _) [cmd]   = do st' <- process st cmd
+                                     return (st', Left (ExprErr "Function call" "No return statement"))
 processBlockRet (st, _) (cmd: cmds) = do st' <- process st cmd
                                          processBlockRet (st', Left (ExprErr "" "")) cmds
 -- processBlockRet (st, _) _           = return st
@@ -147,7 +145,7 @@ blockIsVoid (x: xs)       = blockIsVoid xs
 funCallVal :: State -> Name -> [Expr] -> InputT StateM (Either EvalError Value)
 funCallVal st name exprs = case fun of
         [] -> return (Left (ExprErr "Function call" "No such function"))
-        [(fname, vnames, commands)] -> if (length exprs == length vnames && not(blockIsVoid commands))
+        [(fname, vnames, commands)] -> if length exprs == length vnames && not(blockIsVoid commands)
                                           then do sState <- assignVals scopedState vnames exprs
                                                   (st', e) <- processBlockRet (sState, Left (ExprErr "" "")) commands
                                                   case e of
