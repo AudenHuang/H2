@@ -106,7 +106,7 @@ process st (While e block) = loop st block e
           _                    -> do outputStrLn "Invalid boolean value"
                                      return state
 process st (Func name vars commands) = return st {functions = updateFunctions name vars commands (functions st)}
-process st (VoidFuncCall name exprs) = case fun of
+process st (VoidFuncCall name exprs) = case func of
   [] -> return st
   [(fname, vnames, commands)] -> if length exprs == length vnames && blockIsVoid commands
                                     then do sState <- assignVals scopedState vnames exprs
@@ -115,8 +115,8 @@ process st (VoidFuncCall name exprs) = case fun of
                                  else return st
   where scopedState :: State
         scopedState = st
-        fun :: [(Name, [Name], [Command])]
-        fun = filter (\(x, _, _) -> x == name) (functions st)
+        func :: [(Name, [Name], [Command])]
+        func = filter (\(x, _, _) -> x == name) (functions st)
         assignVals :: State -> [Name] -> [Expr] -> InputT StateM State
         assignVals state (v:vs) (e:es) = do state' <- process state (Set v e)
                                             assignVals state' vs es
