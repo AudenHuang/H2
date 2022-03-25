@@ -20,11 +20,11 @@ initFunc :: [(Name, [Name], [Command])]
 initFunc = [("printDouble", ["a"], [Print (Mul (Var "a") (Val (IntVal 2)))]),
             ("printNTimes", ["a","n"], [Set "i" (Val (IntVal 0)),While (Lt (Var "i") (Var "n")) [Print (Var "a"), Set "i" (Add (Var "i") (Val (IntVal 1)))]])]
 
-initCompletionList :: [String]
-initCompletionList = ["False", "True", "else", "if", "print", "quit", "toFloat(", "toInt(", "toString(", "while", "fun", "printDouble(", "printNTimes("]
+initHLCompletionList :: [String]
+initHLCompletionList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "printDouble(", "printNTimes(", "True", "False"]
 
 initState :: State
-initState = State Leaf [] initFunc initCompletionList
+initState = State Leaf [] initFunc initHLCompletionList
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
