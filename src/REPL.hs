@@ -17,11 +17,11 @@ data State = State {vars :: BTree, commands :: [String],
 -- The others will go direct into eval
 -- no return as of now
 initFunc :: [(Name, [Name], [Command])]
-initFunc = [("printDouble", ["a"], [Print (Mul (Var "a") (Val (IntVal 2)))]),
+initFunc = [("double", ["a"], [Print (Mul (Var "a") (Val (IntVal 2)))]),
             ("printNTimes", ["a","n"], [Set "i" (Val (IntVal 0)),While (Lt (Var "i") (Var "n")) [Print (Var "a"), Set "i" (Add (Var "i") (Val (IntVal 1)))]])]
 
 initHLCompletionList :: [String]
-initHLCompletionList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "printDouble(", "printNTimes(", "True", "False"]
+initHLCompletionList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "double(", "printNTimes(", "True", "False"]
 
 initState :: State
 initState = State Leaf [] initFunc initHLCompletionList
@@ -111,7 +111,7 @@ process st (Func name vars commands) = return st {functions = updateFuns name va
 process st (VoidFuncCall name exprs) = case fun of
   [] -> return st
   [(fname, vnames, commands)] -> if (length exprs == length vnames && blockIsVoid commands)
-                                    then do sState <- assignValues scopedState vnames exprs
+                                    then do sState <- assignVals scopedState vnames exprs
                                             processBlock sState commands
                                             return st
                                  else return st
@@ -119,14 +119,13 @@ process st (VoidFuncCall name exprs) = case fun of
         scopedState = st
         fun :: [(Name, [Name], [Command])]
         fun = filter (\(x, _, _) -> x == name) (functions st)
-        assignValues :: State -> [Name] -> [Expr] -> InputT StateM State
-        assignValues state (v:vs) (e:es) = do state' <- process state (Set v e)
-                                              assignValues state' vs es
-        assignValues state []     []     = return state
+        assignVals :: State -> [Name] -> [Expr] -> InputT StateM State
+        assignVals state (v:vs) (e:es) = do state' <- process state (Set v e)
+                                            assignVals state' vs es
+        assignVals state []     []     = return state
 
 processBlock :: State -> [Command] -> InputT StateM State
-processBlock st (cmd: [])   = do st' <- process st cmd
-                                 return st'
+processBlock st [cmd]   = do process st cmd
 processBlock st (cmd: cmds) = do st' <- process st cmd
                                  processBlock st' cmds
 processBlock st _           = return st
@@ -149,7 +148,7 @@ funCallVal :: State -> Name -> [Expr] -> InputT StateM (Either EvalError Value)
 funCallVal st name exprs = case fun of
         [] -> return (Left (ExprErr "Function call" "No such function"))
         [(fname, vnames, commands)] -> if (length exprs == length vnames && not(blockIsVoid commands))
-                                          then do sState <- assignValues scopedState vnames exprs
+                                          then do sState <- assignVals scopedState vnames exprs
                                                   (st', e) <- processBlockRet (sState, Left (ExprErr "" "")) commands
                                                   case e of
                                                     Right expression -> return (eval (vars st') expression)
@@ -159,10 +158,10 @@ funCallVal st name exprs = case fun of
               scopedState = st
               fun :: [(Name, [Name], [Command])]
               fun = filter (\(x, _, _) -> x == name) (functions st)
-              assignValues :: State -> [Name] -> [Expr] -> InputT StateM State
-              assignValues state (v:vs) (e:es) = do state' <- process state (Set v e)
-                                                    assignValues state' vs es
-              assignValues state []     []     = return state
+              assignVals :: State -> [Name] -> [Expr] -> InputT StateM State
+              assignVals state (v:vs) (e:es) = do state' <- process state (Set v e)
+                                                  assignVals state' vs es
+              assignVals state []     []     = return state
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
@@ -171,17 +170,14 @@ funCallVal st name exprs = case fun of
 
 repl :: InputM ()
 repl = do st <- lift get
-          -- outputStrLn ("Variables: " ++ show (vars st)) -- TODO: debug message, to be removed in the future
-          -- outputStrLn ("Functions: " ++ show (functions st)) -- TODO: debug message, to be removed in the future
           inp <- case commands st of
-            [] -> getInputLine ("> ")
+            [] -> getInputLine "> "
             (x:xs) -> do lift $ put st {commands = xs}
                          return (Just x)
-          -- inp <- getLine
           st <- lift get
           case inp of
             Nothing    -> return ()
-            Just input -> 
+            Just input ->
                 case parse pStatement input of
                     [(cmd, "")] -> -- Must parse entire input
                       case cmd of
