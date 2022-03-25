@@ -101,22 +101,22 @@ process st (If2 e b1) = case eval (vars st) e of
   Right (BoolVal True)  -> do processBlock st b1
   Right (BoolVal False) -> do return st
   _                     -> do outputStrLn "Invalid if conditional"
-                             return st
+                              return st
 
-process st (Repeat e block) = loop st block e
-  where loop :: State -> [Command] -> Expr -> InputT StateM State
-        do x <- (IntVal 0)
-           outputStrLn e   -- Test to see if I got the right e and block
-           outputStrLn block 
-           loop state cmds e = case eval (vars state) e of
-             Right (IntVal e)  -> do st' <- processBlock state cmds
-                                     x=x+1
-                                     loop st' cmds e
-             Right (FltVal e)  -> do e <- toInt(e)
-                                     x=x+1
-                                     loop st' cmds e
-             _                -> do outputStrLn "Invalid repeat statement"
-                                    return state
+-- process st (Repeat e block) = loop st block e
+--   where loop :: State -> [Command] -> Expr -> InputT StateM State
+--         do x <- (IntVal 0)
+--            outputStrLn e   -- Test to see if I got the right e and block
+--            outputStrLn block 
+--            loop state cmds e = case eval (vars state) e of
+--              Right (IntVal e)  -> do st' <- processBlock state cmds
+--                                      x=x+1
+--                                      loop st' cmds e
+--              Right (FltVal e)  -> do e <- toInt(e)
+--                                      x=x+1
+--                                      loop st' cmds e
+--              _                -> do outputStrLn "Invalid repeat statement"
+--                                     return state
 
 process st (While e block) = loop st block e
   where loop :: State -> [Command] -> Expr -> InputT StateM State

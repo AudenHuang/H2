@@ -111,7 +111,6 @@ eval vars (FuncCallExpr name args) = case name of
                                      "toFloat"  -> toFlt args
                                        where toFlt :: [Expr] -> Either EvalError Value
                                              toFlt (strExpression:[])  = case eval vars strExpression of
-                                               Right (IntVal i) -> Right (FltVal i)
                                                Right (StrVal i) -> Right (FltVal (read i :: Float))
                                                _               ->  Left (ExprErr "toFlt" (show args ++ " cannot be converted to float"))
                                      _          -> Right (FunCall name args)

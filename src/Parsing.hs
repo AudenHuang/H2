@@ -204,18 +204,19 @@ pIf = do string "if"
          eBlock <- pBlock
          return (If expression block eBlock)
 
-pRepeat :: Parser Command
-pRepeat = do string "repeat"
-          e <- pExpr
-          block <- pBlock
-          return (Repeat e block)
+-- pRepeat :: Parser Command
+-- pRepeat = do string "repeat"
+--         --      space
+--              e <- pExpr
+--              block <- pBlock
+--              return (Repeat e block)
 
 pIf2 :: Parser Command
 pIf2 = do string "if"
-              space
-              expression <- pBoolOr
-              block <- pBlock
-              return (If2 expression block)
+          space
+          expression <- pBoolOr
+          block <- pBlock
+          return (If2 expression block)
 
 -- While 
 pWhile :: Parser Command
