@@ -41,7 +41,6 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | While Expr [Command]
              | If Expr [Command] [Command]
              -- | If2 Expr [Command]
-             | Import FilePath
              | Func Name [Name] [Command] -- Name -> name of function, [Name] -> Argument variables, [Command] -> Commands in the function
              | VoidFuncCall Name [Expr]
              | Return Expr

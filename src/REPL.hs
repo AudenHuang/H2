@@ -21,7 +21,7 @@ initFunc = [("printDouble", ["a"], [Print (Mul (Var "a") (Val (IntVal 2)))]),
             ("printNTimes", ["a","n"], [Set "i" (Val (IntVal 0)),While (Lt (Var "i") (Var "n")) [Print (Var "a"), Set "i" (Add (Var "i") (Val (IntVal 1)))]])]
 
 initCompletionList :: [String]
-initCompletionList = ["False", "True", "else", "if", "import", "print", "quit", "toFloat(", "toInt(", "toString(", "while", "fun", "printDouble(", "printNTimes("]
+initCompletionList = ["False", "True", "else", "if", "print", "quit", "toFloat(", "toInt(", "toString(", "while", "fun", "printDouble(", "printNTimes("]
 
 initState :: State
 initState = State Leaf [] initFunc initCompletionList
@@ -188,10 +188,7 @@ repl = do st <- lift get
                         (Set var e) -> do st' <- process st cmd
                                           lift $ put st' {wordList = var : wordList st'}
                                           repl
-                        Quit -> return() 
-                        (Import filepath) -> do text <- lift $ lift (readFile filepath)
-                                                lift $ put st {commands = lines text ++ commands st}
-                                                repl
+                        Quit -> return()
                         (Func name _ _)    -> do st' <- process st cmd
                                                  lift $ put st' {wordList = (name ++ "(") : wordList st'}
                                                  repl
