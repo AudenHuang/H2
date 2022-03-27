@@ -169,7 +169,7 @@ pStatement = (do pIfE)
              ||| (do pIf)
              ||| (do pWhile)
              ||| (do pQuit)
-             ||| (do pAssign)
+             ||| (do pSet)
              ||| (do pPrint)
              ||| (do pFunc)
              ||| (do pVoidFuncCall)
@@ -218,11 +218,11 @@ pWhile = do string "while"
             return (While expression block)
 
 -- Assign statements
-pAssign :: Parser Command
-pAssign = do t <- identifier
-             symbol "="
-             (do e <- pExpr
-                 return (Set t e)
+pSet :: Parser Command
+pSet = do t <- identifier
+          symbol "="
+          (do e <- pExpr
+              return (Set t e)
                  ||| do e <- pBoolOr
                         return (Set t e))
                 --        ||| do e <- p
