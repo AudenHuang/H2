@@ -165,16 +165,26 @@ float                         =  token parseFloat
 
 -- STATEMENT PARSER
 pStatement :: Parser Command
-pStatement = (do pIfE)
-             ||| (do pIf)
-             ||| (do pWhile)
-             ||| (do pQuit)
-             ||| (do pSet)
-             ||| (do pPrint)
-             ||| (do pFunc)
-             ||| (do pVoidFuncCall)
-             ||| (do pReturn)
-             ||| (do pExpr2)
+pStatement = (do s <- pIf
+                 return (s))
+             ||| (do s <- pIf2
+                     return (s))
+             ||| (do s <- pWhile
+                     return (s))
+             ||| (do s <- pQuit
+                     return (s))
+             ||| (do s <- pAssign
+                     return (s))
+             ||| (do s <- pPrint
+                     return (s))
+             ||| (do s <- pFunc
+                     return (s))
+             ||| (do s <- pVoidFuncCall
+                     return (s))
+             ||| (do s <- pReturn
+                     return (s))
+             ||| (do s <- pExpr2
+                     return (s))
 
 -- block of statements (if while functions)    
 pBlock :: Parser [Command]
@@ -184,29 +194,28 @@ pBlock = do symbol "{"
             return s
 
 --Parsers for different type of statment
--- If-else 
-pIfE :: Parser Command
-pIfE = do string "if"
-          space
-          expression <- pBoolOr
-          block <- pBlock
-          string "else"
-          eBlock <- pBlock
-          return (IfE expression block eBlock)
-
--- pRepeat :: Parser Command
--- pRepeat = do string "repeat"
---         --      space
---              e <- pExpr
---              block <- pBlock
---              return (Repeat e block)
-
+-- If 
 pIf :: Parser Command
 pIf = do string "if"
          space
          expression <- pBoolOr
          block <- pBlock
-         return (If expression block)
+         string "else"
+         eBlock <- pBlock
+         return (If expression block eBlock)
+
+pRepeat :: Parser Command
+pRepeat = do string "repeat"
+          e <- pExpr
+          block <- pBlock
+          return (Repeat e block)
+
+pIf2 :: Parser Command
+pIf2 = do string "if"
+              space
+              expression <- pBoolOr
+              block <- pBlock
+              return (If2 expression block)
 
 -- While 
 pWhile :: Parser Command
@@ -218,11 +227,11 @@ pWhile = do string "while"
             return (While expression block)
 
 -- Assign statements
-pSet :: Parser Command
-pSet = do t <- identifier
-          symbol "="
-          (do e <- pExpr
-              return (Set t e)
+pAssign :: Parser Command
+pAssign = do t <- identifier
+             symbol "="
+             (do e <- pExpr
+                 return (Set t e)
                  ||| do e <- pBoolOr
                         return (Set t e))
                 --        ||| do e <- p
