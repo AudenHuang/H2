@@ -3,8 +3,7 @@ module Expr where
 import Data.Either
 
 type Name = String
-type ErrMsg = String
-type ExprName = String
+type Msg = String
 
 data Expr = Val Value
           | Var Name
@@ -21,11 +20,11 @@ data Expr = Val Value
 
           | Compare Expr Expr
           | Eq Expr Expr
-          | Ne Expr Expr
-          | Gt Expr Expr
-          | Lt Expr Expr
-          | Gte Expr Expr
-          | Lte Expr Expr
+          | NE Expr Expr
+          | GT Expr Expr
+          | LT Expr Expr
+          | GE Expr Expr
+          | LE Expr Expr
 
           | FuncCallExpr Name [Expr] --Name is name of function
           | InputExpr
@@ -39,9 +38,8 @@ data Expr = Val Value
 data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
              | While Expr [Command]
-             | If Expr [Command] [Command]
-             | Repeat Expr [Command]
-             | If2 Expr [Command]
+             | IfE Expr [Command] [Command]
+             | If Expr [Command]
              | Func Name [Name] [Command] -- Name -> name of function, [Name] -> Argument variables, [Command] -> Commands in the function
              | VoidFuncCall Name [Expr]
              | Return Expr
@@ -49,10 +47,10 @@ data Command = Set Name Expr -- assign an expression to a variable name
              | Quit
   deriving Show
 
-data EvalError = ExprErr ExprName ErrMsg
+data Error = ExprErr Name Msg -- Name refers to the expression that causes the error, Msg is the error msg that will be print when the error occur
   deriving Show
 
-data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | NullVal | Input | FunCall Name [Expr]
+data Value = IntVal Int | FltVal Float | StrVal String | BoolVal Bool | FunCall Name [Expr]| Null | Input 
   deriving Eq
 
 instance Show Value where
@@ -60,32 +58,25 @@ instance Show Value where
   show (FltVal f)  = show f
   show (StrVal s)  = show s
   show (BoolVal b) = show b
-  show NullVal     = "NULL"
+  show Null        = "NULL"
   show Input       = "INPUT"
 
 data BTree = Leaf | Node (Name, Value) BTree BTree
 
-instance Show BTree where
-  show btree = show (inorderTraversal btree)
-
--- Inorder traversal of the binary tree, only used for instance of show.
-inorderTraversal :: BTree -> [(Name, Value)]
-inorderTraversal Leaf                             = []
-inorderTraversal (Node (name, value) ltree rtree) = inorderTraversal ltree ++ [(name, value)] ++ inorderTraversal rtree
-
-btreeLookup :: Name -> BTree -> Either EvalError Value
-btreeLookup _name Leaf = Left (ExprErr "Var" (_name ++ " not found"))
-btreeLookup _name (Node (name, value) ltree rtree)
-  | _name < name = btreeLookup _name ltree
-  | _name > name = btreeLookup _name rtree 
+searchBinTree :: Name -> BTree -> Either Error Value
+searchBinTree _name Leaf = Left (ExprErr "Var" (_name ++ " not found"))
+searchBinTree _name (Node (name, value) binTreeL binTreeR)
+  | _name < name = searchBinTree _name binTreeL
+  | _name > name = searchBinTree _name binTreeR 
   | otherwise    = Right value
 
 
 eval :: BTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
-        Either EvalError Value -- Result (if no errors such as missing variables)
+        Either Error Value -- Result (if no errors such as missing variables)
 eval vars (Val x)      = Right x -- for values, just give the value directly
-eval vars (Var x)      = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
+eval vars (Var x)      = searchBinTree x vars 
+-- string concatenatopm
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Right (StrVal a), Right (StrVal b)) -> Right (StrVal (a ++ b))
   (Right (StrVal a), Right not_string) -> Left (ExprErr "Concat" (show not_string ++ " is not a string"))
@@ -93,28 +84,27 @@ eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Right not_string, _)                -> Left (ExprErr "Concat" (show not_string ++ " is not a string"))
   (Left eval_err, _)                   -> Left eval_err
 eval vars InputExpr         = Right Input
-eval vars (FuncCallExpr name args) = case name of
-                                     "toString" -> toString args
-                                       where toString :: [Expr] -> Either EvalError Value
-                                             toString (intExpression:[])  = case eval vars intExpression of
-                                               Right (IntVal i) -> (Right (StrVal (show i)))
-                                               Right (FltVal f) -> (Right (StrVal (show f)))
-                                               Right (StrVal s) -> (Right (StrVal s))
-                                               _                -> Left (ExprErr "toString" (show intExpression ++ " cannot be converted to string"))
-                                     "toInt"    -> toInt args
+eval vars (FuncCallExpr name args) = let toString :: [Expr] -> Either Error Value
+                                         toString (intExpression:[])  = case eval vars intExpression of
+                                                                             Right (IntVal i) -> (Right (StrVal (show i)))
+                                                                             Right (FltVal f) -> (Right (StrVal (show f)))
+                                                                             Right (StrVal s) -> (Right (StrVal s))
+                                                                             _                -> Left (ExprErr "toString" (show intExpression ++ " cannot be converted to string"))
+                                         toInt :: [Expr] -> Either Error Value
+                                         toInt (strExpression:[])  = case eval vars strExpression of
+                                                                          Right (StrVal i) -> Right (IntVal (read i :: Int))
+                                                                          Right (FltVal i) -> Right (IntVal (round i))
+                                                                          _               ->  Left (ExprErr "toInt" (show args ++ " cannot be converted to integer"))
+                                         toFlt :: [Expr] -> Either Error Value
+                                         toFlt (strExpression:[])  = case eval vars strExpression of
+                                                                          Right (StrVal i) -> Right (FltVal (read i :: Float))
+                                                                          _               ->  Left (ExprErr "toFlt" (show args ++ " cannot be converted to float"))
 
-                                       where toInt :: [Expr] -> Either EvalError Value
-                                             toInt (strExpression:[])  = case eval vars strExpression of
-                                               Right (StrVal i) -> Right (IntVal (read i :: Int))
-                                               Right (FltVal i) -> Right (IntVal (round i))
-                                               _               ->  Left (ExprErr "toInt" (show args ++ " cannot be converted to integer"))
-                                     "toFloat"  -> toFlt args
-                                       where toFlt :: [Expr] -> Either EvalError Value
-                                             toFlt (strExpression:[])  = case eval vars strExpression of
-                                               Right (IntVal i) -> Right (FltVal i)
-                                               Right (StrVal i) -> Right (FltVal (read i :: Float))
-                                               _               ->  Left (ExprErr "toFlt" (show args ++ " cannot be converted to float"))
-                                     _          -> Right (FunCall name args)
+                                         in case name of
+                                                 "toString" -> toString args
+                                                 "toInt"    -> toInt args
+                                                 "toFloat"  -> toFlt args
+                                                 _          -> Right (FunCall name args)
 
 eval vars (Abs x)             = case eval vars x of
                                      Right (IntVal i) -> Right (IntVal (abs i))
@@ -127,23 +117,28 @@ eval vars (Mod x y)           = case (eval vars x, eval vars y) of
                                      (Right not_int, _) -> Left (ExprErr "Mod" (show not_int ++ " is not an integer"))
                                      (Left eval_err, _) -> Left eval_err
 eval vars expr = case expr of
+  --math
   Add e e2 -> mathOP vars expr
   Sub e e2 -> mathOP vars expr
   Mul e e2 -> mathOP vars expr
   Div e e2 -> mathOP vars expr
   Pow e e2 -> mathOP vars expr
-  Lt  e e2 -> boolOp  vars expr
-  Gt  e e2 -> boolOp  vars expr
-  Lte e e2 -> boolOp  vars expr
-  Gte e e2 -> boolOp  vars expr 
+  --compare
   Eq  e e2 -> boolOp  vars expr
-  Ne  e e2 -> boolOp  vars expr
+  NE  e e2 -> boolOp  vars expr
+  LT  e e2 -> boolOp  vars expr
+  GT  e e2 -> boolOp  vars expr
+  LE e e2 -> boolOp  vars expr
+  GE e e2 -> boolOp  vars expr 
+  --logical operator
   And e e2 -> andorBoolOp     vars expr 
   Or  e e2 -> andorBoolOp     vars expr
   Not e    -> notBoolOp       vars expr
   otherOp  -> Left (ExprErr (show otherOp) ("Unknown operations: " ++ show otherOp))
 
-mathOP :: BTree -> Expr -> Either EvalError Value
+
+--Math operations
+mathOP :: BTree -> Expr -> Either Error Value
 mathOP vars expr = case (eval vars x, eval vars y) of
   (Right (FltVal a), Right (FltVal b)) -> Right (FltVal (func a b))
   (Right (FltVal f), Right (IntVal i)) -> Right (FltVal (func f (fromIntegral i)))
@@ -163,7 +158,7 @@ mathOP vars expr = case (eval vars x, eval vars y) of
       Div expr1 expr2 -> ((/), expr1, expr2)
       Pow expr1 expr2 -> ((**), expr1, expr2)
 
-boolOp :: BTree -> Expr -> Either EvalError Value
+boolOp :: BTree -> Expr -> Either Error Value
 boolOp vars expr = case (eval vars x, eval vars y) of
   (Right (StrVal  a), Right (StrVal  b)) -> Right (BoolVal (elem (compare a b) ordering))
   (Right (FltVal  a), Right (FltVal  b)) -> Right (BoolVal (elem (compare a b) ordering))
@@ -176,20 +171,20 @@ boolOp vars expr = case (eval vars x, eval vars y) of
   (Left eval_err, _) -> Left eval_err
   where
     (ordering, x, y) = case expr of
-      Lt  expr1 expr2 -> ([LT],  expr1, expr2)
-      Gt  expr1 expr2 -> ([GT],  expr1, expr2)
-      Lte expr1 expr2 -> ([LT, EQ], expr1, expr2)
-      Gte expr1 expr2 -> ([GT, EQ], expr1, expr2)
+      LT  expr1 expr2 -> ([LT],  expr1, expr2)
+      GT  expr1 expr2 -> ([GT],  expr1, expr2)
+      LE expr1 expr2 -> ([LT, EQ], expr1, expr2)
+      GE expr1 expr2 -> ([GT, EQ], expr1, expr2)
       Eq  expr1 expr2 -> ([EQ], expr1, expr2)
-      Ne  expr1 expr2 -> ([LT, GT], expr1, expr2)
+      NE  expr1 expr2 -> ([LT, GT], expr1, expr2)
 
-notBoolOp :: BTree -> Expr -> Either EvalError Value
+notBoolOp :: BTree -> Expr -> Either Error Value
 notBoolOp vars (Not x) = case eval vars x of
   Right (BoolVal  a) -> Right (BoolVal (not a))
   Right not_bool -> Left (ExprErr "not" (show not_bool ++ " is not a boolean"))
   Left eval_err -> Left eval_err
 
-andorBoolOp :: BTree -> Expr -> Either EvalError Value
+andorBoolOp :: BTree -> Expr -> Either Error Value
 andorBoolOp vars expr = case (eval vars x, eval vars y) of
   (Right (BoolVal a), Right (BoolVal b)) -> Right (BoolVal (func a b) )
   (Right a, Right b) -> Left (ExprErr "andorBoolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))

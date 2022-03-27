@@ -13,18 +13,11 @@ data State = State {vars :: BTree, commands :: [String],
                     functions :: [(Name, [Name], [Command])],
                     wordList :: [String]}
 
--- Functions that can be implemented in this "language"
--- The others will go direct into eval
--- no return as of now
-initFunc :: [(Name, [Name], [Command])]
-initFunc = [("double", ["a"], [Print (Mul (Var "a") (Val (IntVal 2)))]),
-            ("printNTimes", ["a","n"], [Set "i" (Val (IntVal 0)),While (Lt (Var "i") (Var "n")) [Print (Var "a"), Set "i" (Add (Var "i") (Val (IntVal 1)))]])]
-
 initHLCompletionList :: [String]
-initHLCompletionList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "double(", "printNTimes(", "True", "False"]
+initHLCompletionList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "True", "False"]
 
 initState :: State
-initState = State Leaf [] initFunc initHLCompletionList
+initState = State Leaf [] [("", [""], [])] initHLCompletionList
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
@@ -45,11 +38,11 @@ dropVar _name (Node (name, value) ltree rtree)
   | otherwise = case (ltree, rtree) of
     (Leaf, _) -> rtree
     (_, Leaf) -> ltree
-    _ -> Node (left_largest_var, left_largest_val) (dropVar left_largest_var ltree) rtree
-    where (left_largest_var, left_largest_val) = largestVar ltree
-          largestVar tree = case tree of -- using "last (inorderTraversal tree)" or something like that is against the purpose of using binary search tree.
-            Node (name_, value_) _ Leaf -> (name_, value_)
-            Node (_, _) _ rtree -> largestVar rtree
+    _ -> let (left_largest_var, left_largest_val) = largestVar ltree
+             largestVar tree = case tree of -- using "last (inorderTraversal tree)" or something like that is against the purpose of using binary search tree.
+                                    Node (name_, value_) _ Leaf -> (name_, value_)
+                                    Node (_, _) _ rtree -> largestVar rtree
+             in Node (left_largest_var, left_largest_val) (dropVar left_largest_var ltree) rtree
 
 updateFunctions :: Name -> [Name] -> [Command] -> [(Name, [Name], [Command])] -> [(Name, [Name], [Command])]
 updateFunctions name _vars _commands [] = [(name, _vars, _commands)]
@@ -61,8 +54,8 @@ process :: State -> Command -> InputT StateM State
 process st (Set var e) =
   do
     case eval (vars st) e of
-      Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
-                                      return st -- error
+      Left (ExprErr expr err_msg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ err_msg)
+                                        return st -- error
       Right Input -> do inpVal <- getInputLine "Input > "
                         case inpVal of
                          Just inp -> return (st {vars = updateVars var (StrVal inp) (vars st)})
@@ -70,7 +63,7 @@ process st (Set var e) =
       Right (FunCall name exprs) -> do val <- funCallVal st name exprs
                                        case val of
                                         Right eval_res -> return st {vars = updateVars var eval_res (vars st)}
-                                        Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
+                                        Left (ExprErr expr err_msg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ err_msg)
                                                                         return st -- error
       Right eval_res -> do
         let st' = st {vars = updateVars var eval_res (vars st)}
@@ -79,7 +72,7 @@ process st (Set var e) =
 process st (Print e) =
   do
     case eval (vars st) e of
-         Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
+         Left (ExprErr expr err_msg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ err_msg)
          Right Input -> do inpVal <- getInputLine "Input > "
                            case inpVal of
                                 Just inp -> do outputStrLn inp
@@ -87,36 +80,21 @@ process st (Print e) =
          Right (FunCall name exprs) -> do val <- funCallVal st name exprs
                                           case val of
                                             Right eval_res -> outputStrLn (show eval_res) -- how will it show a string
-                                            Left (ExprErr op err_msg) -> do outputStrLn ("Error on " ++ op ++ ": " ++ err_msg)
+                                            Left (ExprErr expr err_msg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ err_msg)
          Right eval_res -> do
            outputStrLn (show eval_res)
     return st
 
-process st (If e b1 b2) = case eval (vars st) e of
+process st (IfE e b1 b2) = case eval (vars st) e of
   Right (BoolVal True)  -> do processBlock st b1
   Right (BoolVal False) -> do processBlock st b2
   _                    -> do outputStrLn "Invalid if conditional"
                              return st
-process st (If2 e b1) = case eval (vars st) e of
+process st (If e b1) = case eval (vars st) e of
   Right (BoolVal True)  -> do processBlock st b1
   Right (BoolVal False) -> do return st
   _                     -> do outputStrLn "Invalid if conditional"
-                             return st
-
-process st (Repeat e block) = loop st block e
-  where loop :: State -> [Command] -> Expr -> InputT StateM State
-        do x <- (IntVal 0)
-           outputStrLn e   -- Test to see if I got the right e and block
-           outputStrLn block 
-           loop state cmds e = case eval (vars state) e of
-             Right (IntVal e)  -> do st' <- processBlock state cmds
-                                     x=x+1
-                                     loop st' cmds e
-             Right (FltVal e)  -> do e <- toInt(e)
-                                     x=x+1
-                                     loop st' cmds e
-             _                -> do outputStrLn "Invalid repeat statement"
-                                    return state
+                              return st
 
 process st (While e block) = loop st block e
   where loop :: State -> [Command] -> Expr -> InputT StateM State
@@ -149,7 +127,7 @@ processBlock st (cmd: cmds) = do st' <- process st cmd
                                  processBlock st' cmds
 processBlock st _           = return st
 
-processBlockRet :: (State, Either EvalError Expr) -> [Command] -> InputT StateM (State, Either EvalError Expr)
+processBlockRet :: (State, Either Error Expr) -> [Command] -> InputT StateM (State, Either Error Expr)
 processBlockRet (st, _) (Return e: _)   = return (st, Right e)
 processBlockRet (st, _) [cmd]   = do st' <- process st cmd
                                      return (st', Left (ExprErr "Function call" "No return statement"))
@@ -163,7 +141,7 @@ blockIsVoid (Return x: _) = False
 blockIsVoid (x: xs)       = blockIsVoid xs
 
 -- TODO: convert to either | Update Errors
-funCallVal :: State -> Name -> [Expr] -> InputT StateM (Either EvalError Value)
+funCallVal :: State -> Name -> [Expr] -> InputT StateM (Either Error Value)
 funCallVal st name exprs = case fun of
         [] -> return (Left (ExprErr "Function call" "No such function"))
         [(fname, vnames, commands)] -> if length exprs == length vnames && not(blockIsVoid commands)
@@ -171,7 +149,7 @@ funCallVal st name exprs = case fun of
                                                   (st', e) <- processBlockRet (sState, Left (ExprErr "" "")) commands
                                                   case e of
                                                     Right expression -> return (eval (vars st') expression)
-                                                    Left (ExprErr op err_msg) -> return (Left (ExprErr op err_msg)) -- Should never happen
+                                                    Left (ExprErr expr err_msg) -> return (Left (ExprErr expr err_msg)) -- Should never happen
                                        else return (Left (ExprErr "Function call" "Number of argument does not match or there is no return statement"))
         where scopedState :: State
               scopedState = st
