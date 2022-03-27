@@ -10,7 +10,7 @@ module Parsing where
 import Data.Char
 import Control.Monad
 import Control.Applicative hiding (many)
-import Expr
+import ExprUvU
 
 infixr 5 |||
 
@@ -166,7 +166,7 @@ float                         =  token parseFloat
 -- STATEMENT PARSER
 pStatement :: Parser Command
 pStatement = (do pIfE)
-             ||| (de numberso pIf)
+             ||| (do pIf)
              ||| (do pWhile)
              ||| (do pQuit)
              ||| (do pSet)
