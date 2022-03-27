@@ -13,18 +13,11 @@ data State = State {vars :: BTree, commands :: [String],
                     functions :: [(Name, [Name], [Command])],
                     wordList :: [String]}
 
--- Functions that can be implemented in this "language"
--- The others will go direct into eval
--- no return as of now
-initFunc :: [(Name, [Name], [Command])]
-initFunc = [("double", ["a"], [Print (Mul (Var "a") (Val (IntVal 2)))]),
-            ("printNTimes", ["a","n"], [Set "i" (Val (IntVal 0)),While (Lt (Var "i") (Var "n")) [Print (Var "a"), Set "i" (Add (Var "i") (Val (IntVal 1)))]])]
-
 initHLCompletionList :: [String]
 initHLCompletionList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "double(", "printNTimes(", "True", "False"]
 
 initState :: State
-initState = State Leaf [] initFunc initHLCompletionList
+initState = State Leaf [] ["", [""], []] initHLCompletionList
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
@@ -45,11 +38,11 @@ dropVar _name (Node (name, value) ltree rtree)
   | otherwise = case (ltree, rtree) of
     (Leaf, _) -> rtree
     (_, Leaf) -> ltree
-    _ -> Node (left_largest_var, left_largest_val) (dropVar left_largest_var ltree) rtree
-    where (left_largest_var, left_largest_val) = largestVar ltree
-          largestVar tree = case tree of -- using "last (inorderTraversal tree)" or something like that is against the purpose of using binary search tree.
-            Node (name_, value_) _ Leaf -> (name_, value_)
-            Node (_, _) _ rtree -> largestVar rtree
+    _ -> let (left_largest_var, left_largest_val) = largestVar ltree
+             largestVar tree = case tree of -- using "last (inorderTraversal tree)" or something like that is against the purpose of using binary search tree.
+                                    Node (name_, value_) _ Leaf -> (name_, value_)
+                                    Node (_, _) _ rtree -> largestVar rtree
+             in Node (left_largest_var, left_largest_val) (dropVar left_largest_var ltree) rtree
 
 updateFunctions :: Name -> [Name] -> [Command] -> [(Name, [Name], [Command])] -> [(Name, [Name], [Command])]
 updateFunctions name _vars _commands [] = [(name, _vars, _commands)]
@@ -92,12 +85,12 @@ process st (Print e) =
            outputStrLn (show eval_res)
     return st
 
-process st (If e b1 b2) = case eval (vars st) e of
+process st (IfE e b1 b2) = case eval (vars st) e of
   Right (BoolVal True)  -> do processBlock st b1
   Right (BoolVal False) -> do processBlock st b2
   _                    -> do outputStrLn "Invalid if conditional"
                              return st
-process st (If2 e b1) = case eval (vars st) e of
+process st (If e b1) = case eval (vars st) e of
   Right (BoolVal True)  -> do processBlock st b1
   Right (BoolVal False) -> do return st
   _                     -> do outputStrLn "Invalid if conditional"
