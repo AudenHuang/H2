@@ -110,7 +110,7 @@ eval vars (FuncCallExpr name args) = let toString :: [Expr] -> Either Error Valu
 eval vars (Abs x)             = case eval vars x of
                                      Right (IntVal i) -> Right (IntVal (abs i))
                                      Right (FltVal f) -> Right (FltVal (abs f))
-                                     _               -> Left (ExprErr "Abs" (show x ++ " is not a float or an integer"))
+                                     _                -> Left (ExprErr "Abs" (show x ++ " is not a float or an integer"))
 eval vars (Mod x y)           = case (eval vars x, eval vars y) of
                                      (Right (IntVal a), Right (IntVal b)) -> Right (IntVal (mod a b))
                                      (Right (IntVal a), Right not_int) -> Left (ExprErr "Mod" (show not_int ++ " is not an integer"))
@@ -140,44 +140,43 @@ eval vars expr = case expr of
 
 --Math operations
 mathOP :: BTree -> Expr -> Either Error Value
-mathOP vars expr = case (eval vars x, eval vars y) of
-  (Right (FltVal a), Right (FltVal b)) -> Right (FltVal (func a b))
-  (Right (FltVal f), Right (IntVal i)) -> Right (FltVal (func f (fromIntegral i)))
-  (Right (IntVal i), Right (FltVal f)) -> Right (FltVal (func (fromIntegral i) f))
-  (Right (IntVal a), Right (IntVal b)) -> Right (IntVal (round (func (fromIntegral a) (fromIntegral b))))
-  (Right (FltVal f), Right not_num)    -> Left (ExprErr "mathOP" (show not_num ++ " is not a number"))
-  (Right (IntVal i), Right not_num)    -> Left (ExprErr "mathOP" (show not_num ++ " is not a number"))
-  (Right (FltVal f), Left eval_err)    -> Left eval_err
-  (Right (IntVal f), Left eval_err)    -> Left eval_err
-  (Right not_num, _)                   -> Left (ExprErr "mathOP" (show not_num ++ " is not a number"))
-  (Left eval_err, _)                     -> Left eval_err
-  where
-    (func, x, y) = case expr of
-      Add expr1 expr2 -> ((+), expr1, expr2)
-      Sub expr1 expr2 -> ((-), expr1, expr2)
-      Mul expr1 expr2 -> ((*), expr1, expr2)
-      Div expr1 expr2 -> ((/), expr1, expr2)
-      Pow expr1 expr2 -> ((**), expr1, expr2)
+mathOP vars expr = let (func, x, y) = case expr of
+                                           Add expr1 expr2 -> ((+), expr1, expr2)
+                                           Sub expr1 expr2 -> ((-), expr1, expr2)
+                                           Mul expr1 expr2 -> ((*), expr1, expr2)
+                                           Div expr1 expr2 -> ((/), expr1, expr2)
+                                           Pow expr1 expr2 -> ((**), expr1, expr2)
+                       in case (eval vars x, eval vars y) of
+                               (Right (FltVal a), Right (FltVal b)) -> Right (FltVal (func a b))
+                               (Right (FltVal f), Right (IntVal i)) -> Right (FltVal (func f (fromIntegral i)))
+                               (Right (IntVal i), Right (FltVal f)) -> Right (FltVal (func (fromIntegral i) f))
+                               (Right (IntVal a), Right (IntVal b)) -> Right (IntVal (round (func (fromIntegral a) (fromIntegral b))))
+                               (Right (FltVal f), Right not_num)    -> Left (ExprErr "mathOP" (show not_num ++ " is not a number"))
+                               (Right (IntVal i), Right not_num)    -> Left (ExprErr "mathOP" (show not_num ++ " is not a number"))
+                               (Right (FltVal f), Left eval_err)    -> Left eval_err
+                               (Right (IntVal f), Left eval_err)    -> Left eval_err
+                               (Right not_num, _)                   -> Left (ExprErr "mathOP" (show not_num ++ " is not a number"))
+                               (Left eval_err, _)                   -> Left eval_err
+
 
 boolOp :: BTree -> Expr -> Either Error Value
-boolOp vars expr = case (eval vars x, eval vars y) of
-  (Right (StrVal  a), Right (StrVal  b)) -> Right (BoolVal (compare a b `elem` ordering))
-  (Right (FltVal  a), Right (FltVal  b)) -> Right (BoolVal (compare a b `elem` ordering))
-  (Right (FltVal  a), Right (IntVal  b)) -> Right (BoolVal (compare a (fromIntegral b) `elem` ordering))
-  (Right (IntVal  a), Right (FltVal  b)) -> Right (BoolVal (compare (fromIntegral a) b `elem` ordering))
-  (Right (IntVal  a), Right (IntVal  b)) -> Right (BoolVal (compare a b `elem` ordering))
-  (Right (BoolVal a), Right (BoolVal b)) -> Right (BoolVal (compare a b `elem` ordering))
-  (Right a, Right b) -> Left (ExprErr "boolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
-  (Right _, Left eval_err) -> Left eval_err
-  (Left eval_err, _) -> Left eval_err
-  where
-    (ordering, x, y) = case expr of
-      Lt  expr1 expr2 -> ([LT],  expr1, expr2)
-      Gt  expr1 expr2 -> ([GT],  expr1, expr2)
-      LE expr1 expr2 -> ([LT, EQ], expr1, expr2)
-      GE expr1 expr2 -> ([GT, EQ], expr1, expr2)
-      Eq  expr1 expr2 -> ([EQ], expr1, expr2)
-      NE  expr1 expr2 -> ([LT, GT], expr1, expr2)
+boolOp vars expr = let (ordering, x, y) = case expr of
+                                               Lt  expr1 expr2 -> ([LT],  expr1, expr2)
+                                               Gt  expr1 expr2 -> ([GT],  expr1, expr2)
+                                               LE expr1 expr2 -> ([LT, EQ], expr1, expr2)
+                                               GE expr1 expr2 -> ([GT, EQ], expr1, expr2)
+                                               Eq  expr1 expr2 -> ([EQ], expr1, expr2)
+                                               NE  expr1 expr2 -> ([LT, GT], expr1, expr2)
+                       in case (eval vars x, eval vars y) of
+                               (Right (StrVal  a), Right (StrVal  b)) -> Right (BoolVal (compare a b `elem` ordering))
+                               (Right (FltVal  a), Right (FltVal  b)) -> Right (BoolVal (compare a b `elem` ordering))
+                               (Right (FltVal  a), Right (IntVal  b)) -> Right (BoolVal (compare a (fromIntegral b) `elem` ordering))
+                               (Right (IntVal  a), Right (FltVal  b)) -> Right (BoolVal (compare (fromIntegral a) b `elem` ordering))
+                               (Right (IntVal  a), Right (IntVal  b)) -> Right (BoolVal (compare a b `elem` ordering))
+                               (Right (BoolVal a), Right (BoolVal b)) -> Right (BoolVal (compare a b `elem` ordering))
+                               (Right a, Right b) -> Left (ExprErr "boolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
+                               (Right _, Left eval_err) -> Left eval_err
+                               (Left eval_err, _) -> Left eval_err
 
 notBoolOp :: BTree -> Expr -> Either Error Value
 notBoolOp vars (Not x) = case eval vars x of
@@ -186,13 +185,13 @@ notBoolOp vars (Not x) = case eval vars x of
   Left eval_err -> Left eval_err
 
 andorBoolOp :: BTree -> Expr -> Either Error Value
-andorBoolOp vars expr = case (eval vars x, eval vars y) of
-  (Right (BoolVal a), Right (BoolVal b)) -> Right (BoolVal (func a b) )
-  (Right a, Right b) -> Left (ExprErr "andorBoolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
-  (Right _, Left eval_err) -> Left eval_err
-  (Left eval_err, _) -> Left eval_err
-  where
-    (func, x, y) = case expr of
-      And expr1 expr2 -> ((&&), expr1, expr2)
-      Or  expr1 expr2 -> ((||), expr1, expr2)
+andorBoolOp vars expr = let (func, x, y) = case expr of
+                                                And expr1 expr2 -> ((&&), expr1, expr2)
+                                                Or  expr1 expr2 -> ((||), expr1, expr2)
+                            in case (eval vars x, eval vars y) of
+                                    (Right (BoolVal a), Right (BoolVal b)) -> Right (BoolVal (func a b) )
+                                    (Right a, Right b) -> Left (ExprErr "andorBoolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
+                                    (Right _, Left eval_err) -> Left eval_err
+                                    (Left eval_err, _) -> Left eval_err
+
 
