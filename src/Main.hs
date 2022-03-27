@@ -12,7 +12,7 @@ import REPL
 -- Copied from https://www.reddit.com/r/haskell/comments/1os0yq/haskeline_woes/
 -- Author: TheBB
 findCompletion :: String -> StateM [Completion]
-findCompletion s = get >>= \ns -> return $ map simpleCompletion $ filter (s `isPrefixOf`) ns
+findCompletion s = do map simpleCompletion . filter (s `isPrefixOf`) . wordList <$> get
 
 hlSettings :: Settings (StateT State IO)
 hlSettings = setComplete (completeWord Nothing " \t" findCompletion) defaultSettings
