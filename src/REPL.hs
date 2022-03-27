@@ -14,10 +14,10 @@ data State = State {vars :: BTree, commands :: [String],
                     wordList :: [String]}
 
 initHLCompletionList :: [String]
-initHLCompletionList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "double(", "printNTimes(", "True", "False"]
+initHLCompletionList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "True", "False"]
 
 initState :: State
-initState = State Leaf [] ["", [""], []] initHLCompletionList
+initState = State Leaf [] [("", [""], [])] initHLCompletionList
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
