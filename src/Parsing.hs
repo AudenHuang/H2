@@ -166,7 +166,7 @@ float                         =  token parseFloat
 -- STATEMENT PARSER
 pStatement :: Parser Command
 pStatement = (do pIfE)
-             ||| (do pIf)
+             ||| (de numberso pIf)
              ||| (do pWhile)
              ||| (do pQuit)
              ||| (do pSet)
@@ -218,13 +218,6 @@ pSet = do t <- identifier
               return (Set t e)
                  ||| do e <- pBoolOr
                         return (Set t e))
-       ||| do symbol "-"
-              t <- identifier
-              case t of
-                   (BoolVal True)  ->  return (Set t (BoolVal False))
-                   (BoolVal False) ->  return (Set t (BoolVal True))
-                   (FltVal f)      ->  return (Set t -f)
-                   (IntVal i)      ->  return (Set t -i)
 
 pQuit :: Parser Command
 pQuit = do string "quit"
