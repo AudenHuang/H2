@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module REPL where
 
 import System.Console.Haskeline
@@ -64,7 +65,7 @@ process st (Set var e) =
                                        case val of
                                         Right eval_res -> return st {vars = updateVars var eval_res (vars st)}
                                         Left (ExprErr expr err_msg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ err_msg)
-                                                                        return st -- error
+                                                                          return st -- error
       Right eval_res -> do
         let st' = st {vars = updateVars var eval_res (vars st)}
         -- st' should include the variable set to the result of evaluating e

@@ -382,15 +382,15 @@ pBool       = (do e <- pExpr
               ||| (do e <- pExpr
                       symbol "!="
                       e2 <- pExpr
-                      return (Ne e e2))
+                      return (NE e e2))
               ||| (do e <- pExpr
                       symbol ">="
                       e2 <- pExpr
-                      return (Gte e e2))
+                      return (GE e e2))
               ||| (do e <- pExpr
                       symbol "<="
                       e2 <- pExpr
-                      return (Lte e e2))
+                      return (LE e e2))
               ||| (do e <- identifier
                       return (Var e))
 
