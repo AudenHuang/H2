@@ -39,9 +39,9 @@ data Expr = Val Value
 data Command = Set Name Expr -- assign an expression to a variable name
              | Print Expr    -- evaluate an expression and print the result
              | While Expr [Command]
-             | If Expr [Command] [Command]
+             | IfE Expr [Command] [Command]
              | Repeat Expr [Command]
-             | If2 Expr [Command]
+             | If Expr [Command]
              | Func Name [Name] [Command] -- Name -> name of function, [Name] -> Argument variables, [Command] -> Commands in the function
              | VoidFuncCall Name [Expr]
              | Return Expr
@@ -65,19 +65,19 @@ instance Show Value where
 
 data BTree = Leaf | Node (Name, Value) BTree BTree
 
-instance Show BTree where
-  show btree = show (inorderTraversal btree)
+-- instance Show BTree where
+--   show binTree = show (traverseBinTree binTree)
 
--- Inorder traversal of the binary tree, only used for instance of show.
-inorderTraversal :: BTree -> [(Name, Value)]
-inorderTraversal Leaf                             = []
-inorderTraversal (Node (name, value) ltree rtree) = inorderTraversal ltree ++ [(name, value)] ++ inorderTraversal rtree
+-- -- Inorder traversal of the binary tree, only used for instance of show.
+-- traverseBinTree :: BTree -> [(Name, Value)]
+-- traverseBinTree Leaf                             = []
+-- traverseBinTree (Node (name, value) ltree rtree) = traverseBinTree ltree ++ [(name, value)] ++ traverseBinTree rtree
 
-btreeLookup :: Name -> BTree -> Either EvalError Value
-btreeLookup _name Leaf = Left (ExprErr "Var" (_name ++ " not found"))
-btreeLookup _name (Node (name, value) ltree rtree)
-  | _name < name = btreeLookup _name ltree
-  | _name > name = btreeLookup _name rtree 
+searchBinTree :: Name -> BTree -> Either EvalError Value
+searchBinTree _name Leaf = Left (ExprErr "Var" (_name ++ " not found"))
+searchBinTree _name (Node (name, value) ltree rtree)
+  | _name < name = searchBinTree _name ltree
+  | _name > name = searchBinTree _name rtree 
   | otherwise    = Right value
 
 
@@ -85,7 +85,7 @@ eval :: BTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Either EvalError Value -- Result (if no errors such as missing variables)
 eval vars (Val x)      = Right x -- for values, just give the value directly
-eval vars (Var x)      = btreeLookup x vars -- using "lookup x (inorderTraversal vars)" here is against the purpose of using binary search tree.
+eval vars (Var x)      = searchBinTree x vars 
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Right (StrVal a), Right (StrVal b)) -> Right (StrVal (a ++ b))
   (Right (StrVal a), Right not_string) -> Left (ExprErr "Concat" (show not_string ++ " is not a string"))
