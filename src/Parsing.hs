@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-
 Functional parsing library from chapter 8 of Programming in Haskell,
 Graham Hutton, Cambridge University Press, 2007.
@@ -163,7 +164,7 @@ float                         :: Parser Float
 float                         =  token parseFloat
 
 
--- STATEMENT PARSER
+-- Statements Parser
 pStatement :: Parser Command
 pStatement = (do pIfE)
              ||| (do pIf)
@@ -176,14 +177,14 @@ pStatement = (do pIfE)
              ||| (do pReturn)
              ||| (do pExpr2)
 
--- block of statements (if while functions)    
+-- Block of statements (if while functions)    
 pBlock :: Parser [Command]
 pBlock = do symbol "{"
             s <- many pStatement
             symbol "}"
             return s
 
---Parsers for different type of statment
+-- Parsers for different type of statment
 -- If-else 
 pIfE :: Parser Command
 pIfE = do string "if"
@@ -193,7 +194,7 @@ pIfE = do string "if"
           string "else"
           eBlock <- pBlock
           return (IfE expression block eBlock)
-
+-- If
 pIf :: Parser Command
 pIf = do string "if"
          space
@@ -210,15 +211,15 @@ pWhile = do string "while"
             block <- pBlock
             return (While expression block)
 
--- Assign statements
+-- Set variables
 pSet :: Parser Command
 pSet = do t <- identifier
           symbol "="
           (do e <- pExpr
               return (Set t e)
-                 ||| do e <- pBoolOr
-                        return (Set t e))
-
+           ||| do e <- pBoolOr
+                  return (Set t e))
+-- Quit the program
 pQuit :: Parser Command
 pQuit = do string "quit"
            return Quit
@@ -246,7 +247,7 @@ pFuncCall :: Parser Expr
 pFuncCall = do name <- identifier
                args <- pFuncCallArgs
                return (FuncCallExpr name args)
-
+-- Function without a return statement 
 pVoidFuncCall :: Parser Command
 pVoidFuncCall = do name <- identifier
                    args <- pFuncCallArgs
@@ -254,41 +255,43 @@ pVoidFuncCall = do name <- identifier
 
 pFuncCallArgs :: Parser [Expr]
 pFuncCallArgs = do symbol "("
-                   i <- (pCSExpressions [])
+                   i <- (pCSE [])
                    return (i)
 
--- Comma seperated expressions
-pCSExpressions :: [Expr] -> Parser [Expr]
-pCSExpressions [] = (do symbol ")"
-                        return [])
-                       ||| (do i <- pExpr
-                               pCSExpressions (i:[]))
-pCSExpressions ys = (do symbol ","
-                        i <- pExpr
-                        pCSExpressions (i:ys))
-                       ||| (do symbol ")"
-                               return (reverse ys))
+-- Comma Sepereated Expression Parser
+-- This check wither the endind is a ) or havind a commas before )
+pCSE :: [Expr] -> Parser [Expr]
+pCSE [] = (do symbol ")"
+              return [])
+           ||| (do x <- pExpr
+                   pCSE (x:[]))
+pCSE xs = (do symbol ","
+              x <- pExpr
+              pCSE (x:xs))
+           ||| (do symbol ")"
+                   return (reverse xs))
 
 
--- Function definition statement
+-- Define Function Parsers
 pFunc :: Parser Command
 pFunc = do string "def"
            name <- identifier
            symbol "("
-           vars <- pCSVar []      -- This absorbs the ")"
+           vars <- pCSVar []
            commands <- pBlock
            return (Func name vars commands)
 
+-- This check wither the endind is a ) or havind a commas before )
 pCSVar :: [Name] -> Parser [Name]
 pCSVar [] = (do symbol ")"
                 return [])
-               ||| (do i <- identifier
-                       pCSVar (i:[]))
-pCSVar ys = (do symbol ","
-                i <- identifier
-                pCSVar (i:ys))
+               ||| (do x <- identifier
+                       pCSVar (x:[]))
+pCSVar xs = (do symbol ","
+                x <- identifier
+                pCSVar (i:xs))
                ||| (do symbol ")"
-                       return (reverse ys))
+                       return (reverse xs))
 
 
 pExpr2 :: Parser Command
@@ -316,8 +319,8 @@ pFactor = do f <- pFuncCall
              return f
           ||| do f <- float
                  return (Val (FltVal f))
-              ||| do d <- integer
-                     return (Val (IntVal d))
+              ||| do i <- integer
+                     return (Val (IntVal i))
                   ||| do v <- identifier
                          return (Var v)
                       ||| do a <- pAbs
@@ -357,9 +360,9 @@ pPower = do f <- pFactor
 
 -- STRING PARSER
 pString :: Parser Expr
-pString = do ch <- char '"' ||| char '\''
-             str <- many (sat (/= ch))
-             char ch
+pString = do c <- char '"' ||| char '\''
+             str <- many (sat (/= c))
+             char c
              return (Val (StrVal str))
 
 
