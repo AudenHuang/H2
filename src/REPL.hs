@@ -38,6 +38,45 @@ updateFunctions name' vars' cmds' ((name, vars, cmds): funcs)
   | name' == name = (name', vars', cmds') : funcs
   | otherwise = (name, vars, cmds) : updateFunctions name' vars' cmds' funcs
 
+funCallVal :: LState -> Name -> [Expr] -> InputM (Either Error Value)
+funCallVal st name exprs = let scope :: LState
+                               scope = st
+                               fun :: [(Name, [Name], [Command])]
+                               fun = filter (\(x, _, _) -> x == name) (functions st)
+                               setVals :: LState -> [Name] -> [Expr] -> InputM LState
+                               setVals lstate (v:vs) (expr:es) = do lstate' <- process lstate (Set v expr)
+                                                                    setVals lstate' vs es
+                               setVals lstate []     []     = return lstate
+                               in case fun of
+                                       [] -> return (Left (ErrorExpr "FuncCall" "The function hasn't been defined"))
+                                       [(funcName, varsName, cmds)] -> if length exprs == length varsName && not(stdBlock cmds)
+                                                                          then do sState <- setVals scope varsName exprs
+                                                                                  (st', expr) <- rtnBlock (sState, Left (ErrorExpr "" "")) cmds
+                                                                                  case expr of
+                                                                                       Right expression -> return (eval (vars st') expression)
+                                                                                       Left (ErrorExpr expr errorMsg) -> return (Left (ErrorExpr expr errorMsg))
+                                                                       else return (Left (ErrorExpr "FuncCall" "Check if the function has a return statement and if the function contains the correct numbers of argumet"))
+
+processBlock :: LState -> [Command] -> InputT StateM LState
+processBlock st [cmd]   = do process st cmd
+processBlock st (cmd: cmds) = do st' <- process st cmd
+                                 processBlock st' cmds
+processBlock st _           = return st
+
+--block with return statement
+rtnBlock :: (LState, Either Error Expr) -> [Command] -> InputT StateM (LState, Either Error Expr)
+rtnBlock (st, _) (Return expr: _)   = return (st, Right expr)
+rtnBlock (st, _) [cmd]   = do st' <- process st cmd
+                              return (st', Left (ErrorExpr "FuncCall" "The function doesn't contain a return statement"))
+rtnBlock (st, _) (cmd: cmds) = do st' <- process st cmd
+                                  rtnBlock (st', Left (ErrorExpr "" "")) cmds
+
+--standard block
+stdBlock :: [Command] -> Bool
+stdBlock []            = True
+stdBlock (Return x: _) = False
+
+stdBlock (x: xs)       = stdBlock xs
 process :: LState -> Command -> InputT StateM LState
 process st (Set var expr) =
   do
@@ -55,6 +94,7 @@ process st (Set var expr) =
                                 Nothing -> return (st {vars = updateVars var (StrVal "") (vars st)})
          Right eval_res -> do let st' = st {vars = updateVars var eval_res (vars st)}
                                  in return st'
+
 process st (Print expr) =
   do
     case eval (vars st) expr of
@@ -75,6 +115,7 @@ process st (IfE expr t f) = case eval (vars st) expr of
   Right (BoolVal False) -> do processBlock st f
   _                     -> do outputStrLn "Invalid if conditional"
                               return st
+
 process st (If expr t) = case eval (vars st) expr of
   Right (BoolVal True)  -> do processBlock st t
   Right (BoolVal False) -> do return st
@@ -107,45 +148,6 @@ process st (FuncCall name exprs) = let scope :: LState
                                                                                           processBlock sState cmds
                                                                                           return st
                                                                                else return st
-
-processBlock :: LState -> [Command] -> InputT StateM LState
-processBlock st [cmd]   = do process st cmd
-processBlock st (cmd: cmds) = do st' <- process st cmd
-                                 processBlock st' cmds
-processBlock st _           = return st
-
---block with return statement
-rtnBlock :: (LState, Either Error Expr) -> [Command] -> InputT StateM (LState, Either Error Expr)
-rtnBlock (st, _) (Return expr: _)   = return (st, Right expr)
-rtnBlock (st, _) [cmd]   = do st' <- process st cmd
-                              return (st', Left (ErrorExpr "FuncCall" "The function doesn't contain a return statement"))
-rtnBlock (st, _) (cmd: cmds) = do st' <- process st cmd
-                                  rtnBlock (st', Left (ErrorExpr "" "")) cmds
-
---standard block
-stdBlock :: [Command] -> Bool
-stdBlock []            = True
-stdBlock (Return x: _) = False
-stdBlock (x: xs)       = stdBlock xs
-
-funCallVal :: LState -> Name -> [Expr] -> InputM (Either Error Value)
-funCallVal st name exprs = let scope :: LState
-                               scope = st
-                               fun :: [(Name, [Name], [Command])]
-                               fun = filter (\(x, _, _) -> x == name) (functions st)
-                               setVals :: LState -> [Name] -> [Expr] -> InputM LState
-                               setVals lstate (v:vs) (expr:es) = do lstate' <- process lstate (Set v expr)
-                                                                    setVals lstate' vs es
-                               setVals lstate []     []     = return lstate
-                               in case fun of
-                                       [] -> return (Left (ErrorExpr "FuncCall" "The function hasn't been defined"))
-                                       [(funcName, varsName, cmds)] -> if length exprs == length varsName && not(stdBlock cmds)
-                                                                          then do sState <- setVals scope varsName exprs
-                                                                                  (st', expr) <- rtnBlock (sState, Left (ErrorExpr "" "")) cmds
-                                                                                  case expr of
-                                                                                       Right expression -> return (eval (vars st') expression)
-                                                                                       Left (ErrorExpr expr errorMsg) -> return (Left (ErrorExpr expr errorMsg))
-                                                                       else return (Left (ErrorExpr "FuncCall" "Check if the function has a return statement and if the function contains the correct numbers of argumet"))
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
