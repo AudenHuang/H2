@@ -387,8 +387,8 @@ pFuncCall = do name <- identifier
 --Argument Parser
 pArgs :: Parser [Expr]
 pArgs = do symbol "("
-           i <- (pCSE [])
-           return (i)
+           i <- pCSE []
+           return i
 
 -- Comma Sepereated Expressions Parser
 -- This check wither the endind is a ) or havind a commas before )
@@ -396,7 +396,7 @@ pCSE :: [Expr] -> Parser [Expr]
 pCSE [] = (do symbol ")"
               return [])
            ||| (do x <- pExpr
-                   pCSE (x:[]))
+                   pCSE [x])
 pCSE xs = (do symbol ","
               x <- pExpr
               pCSE (x:xs))

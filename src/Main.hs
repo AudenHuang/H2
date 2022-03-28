@@ -4,7 +4,6 @@ import System.Console.Haskeline
 import Data.List (isPrefixOf)
 import Control.Monad.State.Strict (get, runStateT, StateT)
 
--- import Control.Monad.Trans
 import Parsing
 import Expr
 import REPL
