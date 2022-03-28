@@ -289,7 +289,7 @@ pCSVar [] = (do symbol ")"
                        pCSVar (x:[]))
 pCSVar xs = (do symbol ","
                 x <- identifier
-                pCSVar (i:xs))
+                pCSVar (x:xs))
                ||| (do symbol ")"
                        return (reverse xs))
 

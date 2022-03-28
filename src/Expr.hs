@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Expr where
 
 import Data.Either
@@ -90,16 +91,19 @@ eval vars (FuncCallExpr name args) = let toString :: [Expr] -> Either Error Valu
                                                                  Right (IntVal i) -> Right (StrVal (show i))
                                                                  Right (FltVal f) -> Right (StrVal (show f))
                                                                  Right (StrVal s) -> Right (StrVal s)
-                                                                 _                -> Left (ExprErr "toString" (show expr ++ " can't convert to string (the expression is neither a int, a float"))
+                                                                 _                -> Left (ExprErr "toString" (show expr ++ " can't convert to string"))
                                          toInt :: [Expr] -> Either Error Value
                                          toInt [expr]  = case eval vars expr of
-                                                              Right (StrVal i) -> Right (IntVal (read i :: Int))|||Right (IntVal (round(read i :: Float)))
-                                                              Right (FltVal i) -> Right (IntVal (round i))
-                                                              _               ->  Left (ExprErr "toInt" (show args ++ " can't convert to int (only float and string that contains a number can be convert to int)"))
+                                                              Right (StrVal s) -> Right (IntVal (round(read s::Float)))
+                                                              Right (FltVal f) -> Right (IntVal (round f))
+                                                              Right (IntVal i) -> Right (IntVal i)
+                                                              _               ->  Left (ExprErr "toInt" (show args ++ " can't convert to int"))
                                          toFlt :: [Expr] -> Either Error Value
                                          toFlt [expr]  = case eval vars expr of
-                                                              Right (StrVal i) -> Right (FltVal (read i :: Float))
-                                                              _               ->  Left (ExprErr "toFlt" (show args ++ " can't convert to float (only string tah contains a float number can be convert to float)"))
+                                                              Right (StrVal s) -> Right (FltVal (read s :: Float))
+                                                              Right (IntVal i) -> Right (FltVal (read (show i)::Float))
+                                                              Right (FltVal f) -> Right (FltVal f)
+                                                              _               ->  Left (ExprErr "toFlt" (show args ++ " can't convert to float"))
 
                                          in case name of
                                                  "toString" -> toString args
@@ -197,4 +201,3 @@ logicalOp vars expr = let (func, x, y) = case expr of
                                   (Right a, Right b) -> Left (ExprErr "logicalOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
                                   (Right _, Left undefineValue) -> Left undefineValue
                                   (Left undefineValue, _) -> Left undefineValue
-
