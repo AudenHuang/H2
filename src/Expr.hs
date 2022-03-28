@@ -75,7 +75,9 @@ eval :: BinTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Either Error Value -- Result (if no errors such as missing variables)
 eval vars (Val x)      = Right x -- for values, just give the value directly
+
 eval vars (Var x)      = searchBinTree x vars
+
 -- string concatenation (if not both x and y are a string return an error, left)
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Right (StrVal a), Right (StrVal b))    -> Right (StrVal (a ++ b))
@@ -83,7 +85,9 @@ eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Right (StrVal a), Left undefineValue)  -> Left undefineValue
   (Right otherVal, _)                     -> Left (ErrorExpr "Concat" (show otherVal ++ " is not a string"))
   (Left undefineValue, _)                 -> Left undefineValue
+  
 eval vars InputExpr         = Right Input
+
 --evaluating toString, toInt and toString and return a value in the correct Value "type" if thers's no error else return left
 eval vars (FuncCallR name args) = let toString :: [Expr] -> Either Error Value
                                       toString [expr]  = case eval vars expr of
@@ -187,6 +191,7 @@ boolOp vars expr = let (ordering, x, y) = case expr of
                                (Right a, Right b) -> Left (ErrorExpr "boolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
                                (Right _, Left undefineValue) -> Left undefineValue
                                (Left undefineValue, _) -> Left undefineValue
+                               
 -- Reversing the boolean value with !
 -- Returns an boolean vallue or an error
 reverseBoolOp :: BinTree -> Expr -> Either Error Value
