@@ -14,7 +14,7 @@ type InputM = InputT StateM
 
 data LState = LState {vars :: BinTree, cmds :: [String],
                     functions :: [(Name, [Name], [Command])],
-                    words :: [String]}
+                    wrds :: [String]}
 
 initHLList :: [String]
 initHLList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "True", "False"]
@@ -43,12 +43,12 @@ process st (Set var expr) =
   do
     case eval (vars st) expr of
          Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ errorMsg)
-                                            return st 
+                                              return st 
          Right (FunCall name exprs) -> do val <- funCallVal st name exprs
                                           case val of
                                                Right eval_res -> return st {vars = updateVars var eval_res (vars st)}
                                                Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ errorMsg)
-                                                                                  return st 
+                                                                                    return st 
          Right Input -> do inpVal <- getInputLine "Input > "
                            case inpVal of
                                 Just input -> return (st {vars = updateVars var (StrVal input) (vars st)})
@@ -84,7 +84,7 @@ process st (If expr t) = case eval (vars st) expr of
 process st (While expr block) = let loop :: LState -> [Command] -> Expr -> InputT StateM LState
                                     loop lstate cmds expr = case eval (vars lstate) expr of
                                                                  Right (BoolVal True)  -> do st' <- processBlock lstate cmds
-                                                                 loop st' cmds expr
+                                                                                             loop st' cmds expr
                                                                  Right (BoolVal False) -> return lstate
                                                                  _                    -> do outputStrLn "Invalid while conditional"
                                                                                             return lstate
@@ -166,17 +166,17 @@ repl = do st <- lift get
                     [(cmd, "")] -> 
                       case cmd of
                         (Set var expr) -> do st' <- process st cmd
-                                          if var `notElem` words st'
-                                             then do lift $ put st' {words = var : words st'}
+                                             if var `notElem` wrds st'
+                                              then do lift $ put st' {wrds = var : wrds st'}
+                                                      repl
+                                             else do lift $ put st' {wrds = wrds st'}
                                                      repl
-                                          else do lift $ put st' {words = words st'}
-                                                  repl
                         Quit -> return()
                         (Func name _ _)    -> do st' <- process st cmd
-                                                 if (name ++ "(") `notElem` words st
-                                                    then do lift $ put st' {words = (name ++ "(") : words st'}
+                                                 if (name ++ "(") `notElem` wrds st
+                                                    then do lift $ put st' {wrds = (name ++ "(") : wrds st'}
                                                             repl
-                                                 else do lift $ put st' {words = words st'}
+                                                 else do lift $ put st' {wrds = wrds st'}
                                                          repl
                         (Expr expr) -> do process st (Print expr)
                                           repl

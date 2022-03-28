@@ -246,12 +246,12 @@ pReturn = do string "return"
 pFuncCall :: Parser Expr
 pFuncCall = do name <- identifier
                args <- pFuncCallArgs
-               return (FuncCallExpr name args)
+               return (FuncCallR name args)
 -- Function without a return statement 
 pVoidFuncCall :: Parser Command
 pVoidFuncCall = do name <- identifier
                    args <- pFuncCallArgs
-                   return (VoidFuncCall name args)
+                   return (FuncCall name args)
 
 pFuncCallArgs :: Parser [Expr]
 pFuncCallArgs = do symbol "("

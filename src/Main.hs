@@ -12,10 +12,10 @@ import REPL
 -- Copied from https://www.reddit.com/r/haskell/comments/1os0yq/haskeline_woes/
 -- Author: TheBB
 findCompletion :: String -> StateM [Completion]
-findCompletion s = do map simpleCompletion . filter (s `isPrefixOf`) . words <$> get
+findCompletion s = do map simpleCompletion . filter (s `isPrefixOf`) . wrds <$> get
 
-hlSettings :: Settings (StateT State IO)
+hlSettings :: Settings (StateT LState IO)
 hlSettings = setComplete (completeWord Nothing " \t" findCompletion) defaultSettings
 
-main :: IO ((), State)
-main = runStateT (runInputT hlSettings repl) initState
+main :: IO ((), LState)
+main = runStateT (runInputT hlSettings repl) initLState
