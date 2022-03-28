@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module REPL where
 
 import System.Console.Haskeline
@@ -98,12 +97,12 @@ process st (VoidFuncCall name exprs) = let scopedLState :: LState
                                            func = filter (\(a, _, _) -> a == name) (functions st)
                                            assignVals :: LState -> [Name] -> [Expr] -> InputT StateM LState
                                            assignVals lstate (v:vs) (e:es) = do lstate' <- process lstate (Set v e)
-                                                                               assignVals lstate' vs es
+                                                                                assignVals lstate' vs es
                                            assignVals lstate []     []     = return lstate
                                        in case func of
                                                [] -> return st
                                                [(fname, vnames, commands)] -> if length exprs == length vnames && blockIsVoid commands
-                                                                                 then do sState <- assignVals scopedState vnames exprs
+                                                                                 then do sState <- assignVals scopedLState vnames exprs
                                                                                          processBlock sState commands
                                                                                          return st
                                                                               else return st
@@ -133,12 +132,12 @@ funCallVal st name exprs = let scopedLState :: LState
                                fun = filter (\(x, _, _) -> x == name) (functions st)
                                assignVals :: LState -> [Name] -> [Expr] -> InputT StateM LState
                                assignVals lstate (v:vs) (e:es) = do lstate' <- process lstate (Set v e)
-                                                                   assignVals lstate' vs es
+                                                                    assignVals lstate' vs es
                                assignVals lstate []     []     = return lstate
                            in case fun of
                                    [] -> return (Left (ExprErr "Function call" "No such function"))
                                    [(fname, vnames, commands)] -> if length exprs == length vnames && not(blockIsVoid commands)
-                                                                     then do sState <- assignVals scopedState vnames exprs
+                                                                     then do sState <- assignVals scopedLState vnames exprs
                                                                              (st', e) <- processBlockRet (sState, Left (ExprErr "" "")) commands
                                                                              case e of
                                                                                   Right expression -> return (eval (vars st') expression)

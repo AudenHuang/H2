@@ -14,8 +14,8 @@ import REPL
 findCompletion :: String -> StateM [Completion]
 findCompletion s = do map simpleCompletion . filter (s `isPrefixOf`) . wordList <$> get
 
-hlSettings :: Settings (StateT State IO)
+hlSettings :: Settings (StateT LState IO)
 hlSettings = setComplete (completeWord Nothing " \t" findCompletion) defaultSettings
 
-main :: IO ((), State)
+main :: IO ((), LState)
 main = runStateT (runInputT hlSettings repl) initLState
