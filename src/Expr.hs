@@ -71,13 +71,12 @@ searchBinTree name' (Node (name, value) binTreeL binTreeR)
   | name' > name = searchBinTree name' binTreeR
   | otherwise    = Right value
 
-
 eval :: BinTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Either Error Value -- Result (if no errors such as missing variables)
 eval vars (Val x)      = Right x -- for values, just give the value directly
 eval vars (Var x)      = searchBinTree x vars
--- string concatenatopm
+-- string concatenation (if not both x and y are a string return an error, left)
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Right (StrVal a), Right (StrVal b))    -> Right (StrVal (a ++ b))
   (Right (StrVal a), Right otherVal)      -> Left (ErrorExpr "Concat" (show otherVal ++ " is not a string"))
@@ -85,6 +84,7 @@ eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Right otherVal, _)                     -> Left (ErrorExpr "Concat" (show otherVal ++ " is not a string"))
   (Left undefineValue, _)                 -> Left undefineValue
 eval vars InputExpr         = Right Input
+--evaluating toString, toInt and toString and return a value in the correct Value "type" if thers's no error else return left
 eval vars (FuncCallR name args) = let toString :: [Expr] -> Either Error Value
                                       toString [expr]  = case eval vars expr of
                                                               Right (IntVal i) -> Right (StrVal (show i))
@@ -93,6 +93,8 @@ eval vars (FuncCallR name args) = let toString :: [Expr] -> Either Error Value
                                                               _                -> Left (ErrorExpr "toString" (show expr ++ " can't convert to string"))
                                       toInt :: [Expr] -> Either Error Value
                                       toInt [expr]  = case eval vars expr of
+                                                           -- we read the string that contains a number into float so it can read both int and float 
+                                                           -- then we rounded it up to make sure the result is an int
                                                            Right (StrVal s) -> Right (IntVal (round(read s::Float)))
                                                            Right (FltVal f) -> Right (IntVal (round f))
                                                            Right (IntVal i) -> Right (IntVal i)
@@ -109,17 +111,17 @@ eval vars (FuncCallR name args) = let toString :: [Expr] -> Either Error Value
                                               "toInt"    -> toInt args
                                               "toFloat"  -> toFlt args
                                               _          -> Right (FunCall name args)
-
 eval vars (Abs x)             = case eval vars x of
                                      Right (IntVal i) -> Right (IntVal (abs i))
                                      Right (FltVal f) -> Right (FltVal (abs f))
-                                     _                -> Left (ErrorExpr "Abs" (show x ++ " is not a float or an integer"))
+                                     _                -> Left (ErrorExpr "Abs" (show x ++ " isn't an integer or float"))
 eval vars (Mod x y)           = case (eval vars x, eval vars y) of
                                      (Right (IntVal a), Right (IntVal b)) -> Right (IntVal (mod a b))
-                                     (Right (IntVal a), Right not_int) -> Left (ErrorExpr "Mod" (show not_int ++ " is not an integer"))
+                                     (Right (IntVal a), Right not_int) -> Left (ErrorExpr "Mod" (show not_int ++ " isn't an integer"))
                                      (Right (IntVal a), Left undefineValue) -> Left undefineValue
                                      (Right not_int, _) -> Left (ErrorExpr "Mod" (show not_int ++ " is not an integer"))
                                      (Left undefineValue, _) -> Left undefineValue
+-- Put the expression through the right operation
 eval vars expr = 
   case expr of
        --mathOP cases
@@ -144,7 +146,8 @@ eval vars expr =
        undefineOp  -> Left (ErrorExpr (show undefineOp) ("Unknown operations: " ++ show undefineOp))
 
 
---Math operations
+-- Math operations
+-- Returns a numeric value or an error
 mathOP :: BinTree -> Expr -> Either Error Value
 mathOP vars expr = let (func, x, y) = case expr of
                                            Add e1 e2 -> ((+), e1, e2)
@@ -164,7 +167,8 @@ mathOP vars expr = let (func, x, y) = case expr of
                                (Right not_num, _)                   -> Left (ErrorExpr "mathOP" (show not_num ++ " is not a number"))
                                (Left undefineValue, _)                   -> Left undefineValue
 
--- boolean operations that return True or false
+-- Boolean operations
+-- Returns True or false (a boolean value) or an error
 boolOp :: BinTree -> Expr -> Either Error Value
 boolOp vars expr = let (ordering, x, y) = case expr of
                                                Lt e1 e2 -> ([LT],  e1, e2)
@@ -183,14 +187,16 @@ boolOp vars expr = let (ordering, x, y) = case expr of
                                (Right a, Right b) -> Left (ErrorExpr "boolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
                                (Right _, Left undefineValue) -> Left undefineValue
                                (Left undefineValue, _) -> Left undefineValue
---Reversing the boolean value with !
+-- Reversing the boolean value with !
+-- Returns an boolean vallue or an error
 reverseBoolOp :: BinTree -> Expr -> Either Error Value
 reverseBoolOp vars (Not x) = case eval vars x of
   Right (BoolVal  a) -> Right (BoolVal (not a))
   Right not_bool -> Left (ErrorExpr "not" (show not_bool ++ " is not a boolean"))
   Left undefineValue -> Left undefineValue
 
---Logical operations with && and || which will also return true or false
+-- Logical operations with && and ||
+-- Returns a boolean value or an error
 logicalOp :: BinTree -> Expr -> Either Error Value
 logicalOp vars expr = let (func, x, y) = case expr of
                                               And e1 e2 -> ((&&), e1, e2)
