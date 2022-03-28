@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-
 Functional parsing library from chapter 8 of Programming in Haskell,
 Graham Hutton, Cambridge University Press, 2007.
@@ -217,8 +216,8 @@ pSet = do t <- identifier
           symbol "="
           (do e <- pExpr
               return (Set t e)
-           ||| do e <- pBoolOr
-                  return (Set t e))
+                 ||| do e <- pBoolOr
+                        return (Set t e))
 
 pQuit :: Parser Command
 pQuit = do string "quit"

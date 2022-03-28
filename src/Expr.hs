@@ -194,3 +194,4 @@ andorBoolOp vars expr = let (func, x, y) = case expr of
                                     (Right _, Left eval_err) -> Left eval_err
                                     (Left eval_err, _) -> Left eval_err
 
+
