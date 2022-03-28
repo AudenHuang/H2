@@ -101,7 +101,7 @@ process st (VoidFuncCall name exprs) = let scopedLState :: LState
                                            assignVals lstate []     []     = return lstate
                                        in case func of
                                                [] -> return st
-                                               [(fname, vnames, commands)] -> if length exprs == length vnames && blockIsVoid commands
+                                               [(fname, vnames, commands)] -> if length exprs == length vnames && emptyBlock commands
                                                                                  then do sState <- assignVals scopedLState vnames exprs
                                                                                          processBlock sState commands
                                                                                          return st
@@ -113,17 +113,17 @@ processBlock st (cmd: cmds) = do st' <- process st cmd
                                  processBlock st' cmds
 processBlock st _           = return st
 
-processBlockRet :: (LState, Either Error Expr) -> [Command] -> InputT StateM (LState, Either Error Expr)
-processBlockRet (st, _) (Return e: _)   = return (st, Right e)
-processBlockRet (st, _) [cmd]   = do st' <- process st cmd
-                                     return (st', Left (ExprErr "Function call" "No return statement"))
-processBlockRet (st, _) (cmd: cmds) = do st' <- process st cmd
-                                         processBlockRet (st', Left (ExprErr "" "")) cmds
+blockReturn :: (LState, Either Error Expr) -> [Command] -> InputT StateM (LState, Either Error Expr)
+blockReturn (st, _) (Return e: _)   = return (st, Right e)
+blockReturn (st, _) [cmd]   = do st' <- process st cmd
+                                 return (st', Left (ExprErr "Function call" "No return statement"))
+blockReturn (st, _) (cmd: cmds) = do st' <- process st cmd
+                                     blockReturn (st', Left (ExprErr "" "")) cmds
 
-blockIsVoid :: [Command] -> Bool
-blockIsVoid []            = True
-blockIsVoid (Return x: _) = False
-blockIsVoid (x: xs)       = blockIsVoid xs
+emptyBlock :: [Command] -> Bool
+emptyBlock []            = True
+emptyBlock (Return x: _) = False
+emptyBlock (x: xs)       = emptyBlock xs
 
 funCallVal :: LState -> Name -> [Expr] -> InputT StateM (Either Error Value)
 funCallVal st name exprs = let scopedLState :: LState
@@ -136,9 +136,9 @@ funCallVal st name exprs = let scopedLState :: LState
                                assignVals lstate []     []     = return lstate
                            in case fun of
                                    [] -> return (Left (ExprErr "Function call" "No such function"))
-                                   [(fname, vnames, commands)] -> if length exprs == length vnames && not(blockIsVoid commands)
+                                   [(fname, vnames, commands)] -> if length exprs == length vnames && not(emptyBlock commands)
                                                                      then do sState <- assignVals scopedLState vnames exprs
-                                                                             (st', e) <- processBlockRet (sState, Left (ExprErr "" "")) commands
+                                                                             (st', e) <- blockReturn (sState, Left (ExprErr "" "")) commands
                                                                              case e of
                                                                                   Right expression -> return (eval (vars st') expression)
                                                                                   Left (ExprErr expr err_msg) -> return (Left (ExprErr expr err_msg)) -- Should never happen
