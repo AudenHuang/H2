@@ -18,4 +18,4 @@ hlSettings :: Settings (StateT State IO)
 hlSettings = setComplete (completeWord Nothing " \t" findCompletion) defaultSettings
 
 main :: IO ((), State)
-main = runStateT (runInputT hlSettings repl) initState
+main = runStateT (runInputT hlSettings repl) initLState

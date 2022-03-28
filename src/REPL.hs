@@ -8,17 +8,17 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans (lift)
 import Control.Monad.State.Strict (get, put, runStateT, StateT)
 
-type StateM = StateT State IO
+type StateM = StateT LState IO
 type InputM = InputT StateM
-data State = State {vars :: BTree, commands :: [String],
+data LState = LState {vars :: BTree, commands :: [String],
                     functions :: [(Name, [Name], [Command])],
                     wordList :: [String]}
 
 initHLCompletionList :: [String]
 initHLCompletionList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "True", "False"]
 
-initState :: State
-initState = State Leaf [] [("", [""], [])] initHLCompletionList
+initLState :: LState
+initLState = LState Leaf [] [("", [""], [])] initHLCompletionList
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
@@ -36,7 +36,7 @@ updateFunctions _name _vars _commands ((name, vars, commands): funcs)
   | _name == name = (_name, _vars, _commands) : funcs
   | otherwise = (name, vars, commands) : updateFunctions _name _vars _commands funcs
 
-process :: State -> Command -> InputT StateM State
+process :: LState -> Command -> InputT StateM LState
 process st (Set var e) =
   do
     case eval (vars st) e of
@@ -81,25 +81,25 @@ process st (If e b1) = case eval (vars st) e of
   _                     -> do outputStrLn "Invalid if conditional"
                               return st
 
-process st (While e block) = let loop :: State -> [Command] -> Expr -> InputT StateM State
-                                 loop state cmds expr = case eval (vars state) expr of
-                                  Right (BoolVal True)  -> do st' <- processBlock state cmds
+process st (While e block) = let loop :: LState -> [Command] -> Expr -> InputT StateM LState
+                                 loop lstate cmds expr = case eval (vars lstate) expr of
+                                  Right (BoolVal True)  -> do st' <- processBlock lstate cmds
                                                               loop st' cmds expr
-                                  Right (BoolVal False) -> return state
+                                  Right (BoolVal False) -> return lstate
                                   _                    -> do outputStrLn "Invalid while conditional"
-                                                             return state
+                                                             return lstate
                              in loop st block e
 
 process st (Func name vars commands) = return st {functions = updateFunctions name vars commands (functions st)}
 
-process st (VoidFuncCall name exprs) = let scopedState :: State
-                                           scopedState = st
+process st (VoidFuncCall name exprs) = let scopedLState :: LState
+                                           scopedLState = st
                                            func :: [(Name, [Name], [Command])]
                                            func = filter (\(a, _, _) -> a == name) (functions st)
-                                           assignVals :: State -> [Name] -> [Expr] -> InputT StateM State
-                                           assignVals state (v:vs) (e:es) = do state' <- process state (Set v e)
-                                                                               assignVals state' vs es
-                                           assignVals state []     []     = return state
+                                           assignVals :: LState -> [Name] -> [Expr] -> InputT StateM LState
+                                           assignVals lstate (v:vs) (e:es) = do lstate' <- process lstate (Set v e)
+                                                                               assignVals lstate' vs es
+                                           assignVals lstate []     []     = return lstate
                                        in case func of
                                                [] -> return st
                                                [(fname, vnames, commands)] -> if length exprs == length vnames && blockIsVoid commands
@@ -108,13 +108,13 @@ process st (VoidFuncCall name exprs) = let scopedState :: State
                                                                                          return st
                                                                               else return st
 
-processBlock :: State -> [Command] -> InputT StateM State
+processBlock :: LState -> [Command] -> InputT StateM LState
 processBlock st [cmd]   = do process st cmd
 processBlock st (cmd: cmds) = do st' <- process st cmd
                                  processBlock st' cmds
 processBlock st _           = return st
 
-processBlockRet :: (State, Either Error Expr) -> [Command] -> InputT StateM (State, Either Error Expr)
+processBlockRet :: (LState, Either Error Expr) -> [Command] -> InputT StateM (LState, Either Error Expr)
 processBlockRet (st, _) (Return e: _)   = return (st, Right e)
 processBlockRet (st, _) [cmd]   = do st' <- process st cmd
                                      return (st', Left (ExprErr "Function call" "No return statement"))
@@ -126,15 +126,15 @@ blockIsVoid []            = True
 blockIsVoid (Return x: _) = False
 blockIsVoid (x: xs)       = blockIsVoid xs
 
-funCallVal :: State -> Name -> [Expr] -> InputT StateM (Either Error Value)
-funCallVal st name exprs = let scopedState :: State
-                               scopedState = st
+funCallVal :: LState -> Name -> [Expr] -> InputT StateM (Either Error Value)
+funCallVal st name exprs = let scopedLState :: LState
+                               scopedLState = st
                                fun :: [(Name, [Name], [Command])]
                                fun = filter (\(x, _, _) -> x == name) (functions st)
-                               assignVals :: State -> [Name] -> [Expr] -> InputT StateM State
-                               assignVals state (v:vs) (e:es) = do state' <- process state (Set v e)
-                                                                   assignVals state' vs es
-                               assignVals state []     []     = return state
+                               assignVals :: LState -> [Name] -> [Expr] -> InputT StateM LState
+                               assignVals lstate (v:vs) (e:es) = do lstate' <- process lstate (Set v e)
+                                                                   assignVals lstate' vs es
+                               assignVals lstate []     []     = return lstate
                            in case fun of
                                    [] -> return (Left (ExprErr "Function call" "No such function"))
                                    [(fname, vnames, commands)] -> if length exprs == length vnames && not(blockIsVoid commands)
