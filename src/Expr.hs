@@ -64,9 +64,9 @@ instance Show Value where
 
 data BinTree = Leaf | Node (Name, Value) BinTree BinTree
 
---searching the bintree to find a given variable to see if that variable has been initiate or not
+--searching the bintree to find a given variable to see if that variable has been initialised or not
 searchBinTree :: Name -> BinTree -> Either Error Value
-searchBinTree name' Leaf = Left (ErrorExpr "Var" (name' ++ " hasn't been initiate"))
+searchBinTree name' Leaf = Left (ErrorExpr "Var" (name' ++ " hasn't been initialised"))
 searchBinTree name' (Node (name, value) binTreeL binTreeR)
   | name' < name = searchBinTree name' binTreeL
   | name' > name = searchBinTree name' binTreeR

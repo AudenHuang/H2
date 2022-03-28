@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-
 Functional parsing library from chapter 8 of Programming in Haskell,
 Graham Hutton, Cambridge University Press, 2007.
@@ -426,7 +425,3 @@ pCSV xs = (do symbol ","
               pCSV (x:xs))
              ||| (do symbol ")"
                      return (reverse xs))
-
-
-
-

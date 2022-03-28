@@ -41,13 +41,13 @@ updateFunctions name' vars' cmds' ((name, vars, cmds): funcs)
 funCallVal :: LState -> Name -> [Expr] -> InputM (Either Error Value)
 funCallVal st name exprs = let scope :: LState
                                scope = st
-                               fun :: [(Name, [Name], [Command])]
-                               fun = filter (\(x, _, _) -> x == name) (functions st)
+                               func :: [(Name, [Name], [Command])]
+                               func = filter (\(x, _, _) -> x == name) (functions st)
                                setVals :: LState -> [Name] -> [Expr] -> InputM LState
                                setVals lstate (v:vs) (expr:es) = do lstate' <- process lstate (Set v expr)
                                                                     setVals lstate' vs es
                                setVals lstate []     []     = return lstate
-                               in case fun of
+                               in case func of
                                        [] -> return (Left (ErrorExpr "FuncCall" "The function hasn't been defined"))
                                        [(funcName, varsName, cmds)] -> if length exprs == length varsName && not(stdBlock cmds)
                                                                           then do sState <- setVals scope varsName exprs
@@ -81,12 +81,12 @@ process :: LState -> Command -> InputT StateM LState
 process st (Set var expr) =
   do
     case eval (vars st) expr of
-         Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ errorMsg)
+         Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error : " ++ expr ++ ": " ++ errorMsg)
                                               return st 
          Right (FunCall name exprs) -> do val <- funCallVal st name exprs
                                           case val of
                                                Right eval_res -> return st {vars = updateVars var eval_res (vars st)}
-                                               Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ errorMsg)
+                                               Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error : " ++ expr ++ ": " ++ errorMsg)
                                                                                     return st 
          Right Input -> do inpVal <- getInputLine "Input > "
                            case inpVal of
@@ -98,10 +98,10 @@ process st (Set var expr) =
 process st (Print expr) =
   do
     case eval (vars st) expr of
-         Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ errorMsg)
+         Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error : " ++ expr ++ ": " ++ errorMsg)
          Right (FunCall name exprs) -> do val <- funCallVal st name exprs
                                           case val of
-                                            Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ errorMsg)
+                                            Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error : " ++ expr ++ ": " ++ errorMsg)
                                             Right eval_res -> outputStrLn (show eval_res) 
          Right Input -> do inpVal <- getInputLine "Input > "
                            case inpVal of
