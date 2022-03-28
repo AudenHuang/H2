@@ -27,7 +27,7 @@ data Expr = Val Value
           | GE Expr Expr
           | LE Expr Expr
           -- function call
-          | FuncCallExpr Name [Expr] --Name is name of function
+          | FuncCallR Name [Expr] --Name is name of function
           | InputExpr
           -- logic operations
           | Not Expr
@@ -62,10 +62,10 @@ instance Show Value where
   show Null        = "NULL"
   show Input       = "INPUT"
 
-data BTree = Leaf | Node (Name, Value) BTree BTree
+data BinTree = Leaf | Node (Name, Value) BinTree BinTree
 
 --searching the bintree to find a given variable to see if that variable has been initiate or not
-searchBinTree :: Name -> BTree -> Either Error Value
+searchBinTree :: Name -> BinTree -> Either Error Value
 searchBinTree name' Leaf = Left (ExprErr "Var" (name' ++ " hasn't been initiate"))
 searchBinTree name' (Node (name, value) binTreeL binTreeR)
   | name' < name = searchBinTree name' binTreeL
@@ -73,7 +73,7 @@ searchBinTree name' (Node (name, value) binTreeL binTreeR)
   | otherwise    = Right value
 
 
-eval :: BTree -> -- Variable name to value mapping
+eval :: BinTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Either Error Value -- Result (if no errors such as missing variables)
 eval vars (Val x)      = Right x -- for values, just give the value directly
@@ -86,30 +86,30 @@ eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Right otherVal, _)                     -> Left (ExprErr "Concat" (show otherVal ++ " is not a string"))
   (Left undefineValue, _)                 -> Left undefineValue
 eval vars InputExpr         = Right Input
-eval vars (FuncCallExpr name args) = let toString :: [Expr] -> Either Error Value
-                                         toString [expr]  = case eval vars expr of
-                                                                 Right (IntVal i) -> Right (StrVal (show i))
-                                                                 Right (FltVal f) -> Right (StrVal (show f))
-                                                                 Right (StrVal s) -> Right (StrVal s)
-                                                                 _                -> Left (ExprErr "toString" (show expr ++ " can't convert to string"))
-                                         toInt :: [Expr] -> Either Error Value
-                                         toInt [expr]  = case eval vars expr of
-                                                              Right (StrVal s) -> Right (IntVal (round(read s::Float)))
-                                                              Right (FltVal f) -> Right (IntVal (round f))
-                                                              Right (IntVal i) -> Right (IntVal i)
-                                                              _               ->  Left (ExprErr "toInt" (show args ++ " can't convert to int"))
-                                         toFlt :: [Expr] -> Either Error Value
-                                         toFlt [expr]  = case eval vars expr of
-                                                              Right (StrVal s) -> Right (FltVal (read s :: Float))
-                                                              Right (IntVal i) -> Right (FltVal (read (show i)::Float))
-                                                              Right (FltVal f) -> Right (FltVal f)
-                                                              _               ->  Left (ExprErr "toFlt" (show args ++ " can't convert to float"))
+eval vars (FuncCallR name args) = let toString :: [Expr] -> Either Error Value
+                                      toString [expr]  = case eval vars expr of
+                                                              Right (IntVal i) -> Right (StrVal (show i))
+                                                              Right (FltVal f) -> Right (StrVal (show f))
+                                                              Right (StrVal s) -> Right (StrVal s)
+                                                              _                -> Left (ExprErr "toString" (show expr ++ " can't convert to string"))
+                                      toInt :: [Expr] -> Either Error Value
+                                      toInt [expr]  = case eval vars expr of
+                                                           Right (StrVal s) -> Right (IntVal (round(read s::Float)))
+                                                           Right (FltVal f) -> Right (IntVal (round f))
+                                                           Right (IntVal i) -> Right (IntVal i)
+                                                           _               ->  Left (ExprErr "toInt" (show args ++ " can't convert to int"))
+                                      toFlt :: [Expr] -> Either Error Value
+                                      toFlt [expr]  = case eval vars expr of
+                                                           Right (StrVal s) -> Right (FltVal (read s :: Float))
+                                                           Right (IntVal i) -> Right (FltVal (read (show i)::Float))
+                                                           Right (FltVal f) -> Right (FltVal f)
+                                                           _               ->  Left (ExprErr "toFlt" (show args ++ " can't convert to float"))
 
-                                         in case name of
-                                                 "toString" -> toString args
-                                                 "toInt"    -> toInt args
-                                                 "toFloat"  -> toFlt args
-                                                 _          -> Right (FunCall name args)
+                                      in case name of
+                                              "toString" -> toString args
+                                              "toInt"    -> toInt args
+                                              "toFloat"  -> toFlt args
+                                              _          -> Right (FunCall name args)
 
 eval vars (Abs x)             = case eval vars x of
                                      Right (IntVal i) -> Right (IntVal (abs i))
@@ -146,7 +146,7 @@ eval vars expr =
 
 
 --Math operations
-mathOP :: BTree -> Expr -> Either Error Value
+mathOP :: BinTree -> Expr -> Either Error Value
 mathOP vars expr = let (func, x, y) = case expr of
                                            Add e1 e2 -> ((+), e1, e2)
                                            Sub e1 e2 -> ((-), e1, e2)
@@ -166,7 +166,7 @@ mathOP vars expr = let (func, x, y) = case expr of
                                (Left undefineValue, _)                   -> Left undefineValue
 
 -- boolean operations that return True or false
-boolOp :: BTree -> Expr -> Either Error Value
+boolOp :: BinTree -> Expr -> Either Error Value
 boolOp vars expr = let (ordering, x, y) = case expr of
                                                Lt e1 e2 -> ([LT],  e1, e2)
                                                Gt e1 e2 -> ([GT],  e1, e2)
@@ -185,14 +185,14 @@ boolOp vars expr = let (ordering, x, y) = case expr of
                                (Right _, Left undefineValue) -> Left undefineValue
                                (Left undefineValue, _) -> Left undefineValue
 --Reversing the boolean value with !
-reverseBoolOp :: BTree -> Expr -> Either Error Value
+reverseBoolOp :: BinTree -> Expr -> Either Error Value
 reverseBoolOp vars (Not x) = case eval vars x of
   Right (BoolVal  a) -> Right (BoolVal (not a))
   Right not_bool -> Left (ExprErr "not" (show not_bool ++ " is not a boolean"))
   Left undefineValue -> Left undefineValue
 
 --Logical operations with && and || which will also return true or false
-logicalOp :: BTree -> Expr -> Either Error Value
+logicalOp :: BinTree -> Expr -> Either Error Value
 logicalOp vars expr = let (func, x, y) = case expr of
                                               And e1 e2 -> ((&&), e1, e2)
                                               Or  e1 e2 -> ((||), e1, e2)
