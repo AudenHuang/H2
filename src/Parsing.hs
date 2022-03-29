@@ -127,11 +127,14 @@ int                           =  do char '-'
                                     return (-n)
                                   ||| nat
 
+-- Parse the integer (numbers until reacing '.') and save it to i
+-- Parse the decimal number (numbers after the '.') and save it to d
+-- Returnsa string that combined the integer with a '.' and the decmal number
 parseFloat                    :: Parser Float
-parseFloat                    =  do x <- int
+parseFloat                    =  do i <- int
                                     char '.'
-                                    y <- nat
-                                    return (read (show x ++ "." ++ show y))
+                                    d <- nat
+                                    return (read (show i ++ "." ++ show d))
 
 space                         :: Parser ()
 space                         =  do many (sat isSpace)
@@ -159,6 +162,7 @@ integer                       =  token int
 symbol                        :: String -> Parser String
 symbol xs                     =  token (string xs)
 
+-- Use token to remove spaces
 float                         :: Parser Float
 float                         =  token parseFloat
 
@@ -184,7 +188,7 @@ pBlock = do symbol "{"
             return s
 
 -- Parsers for different type of statment
--- If-else 
+-- If-else statments
 pIfE :: Parser Command
 pIfE = do string "if"
           space
@@ -193,7 +197,7 @@ pIfE = do string "if"
           string "else"
           eBlock <- pBlock
           return (IfE expression block eBlock)
--- If
+-- If statments
 pIf :: Parser Command
 pIf = do string "if"
          space
@@ -201,7 +205,7 @@ pIf = do string "if"
          block <- pBlock
          return (If expression block)
 
--- While 
+-- While statments
 pWhile :: Parser Command
 pWhile = do string "while"
             space
@@ -240,6 +244,7 @@ pReturn = do string "return"
              e <- pExpr
              return (Return e)
 
+-- Expression statements
 pSExpr :: Parser Command
 pSExpr = (do Expr <$> pOr) ||| (do Expr <$> pExpr)
 
@@ -293,8 +298,8 @@ pFactor = do f <- pFuncCallR
                  return (Val (FltVal f))
               ||| do i <- integer
                      return (Val (IntVal i))
-                  ||| do v <- identifier
-                         return (Var v)
+                  ||| do i <- identifier
+                         return (Var i)
                       ||| do a <- pAbs
                              return a
                           ||| do symbol "("
@@ -367,9 +372,9 @@ pOr   = do f <- pAnd
 -- String Parser
 pString :: Parser Expr
 pString = do c <- char '"' ||| char '\''
-             str <- many (sat (/= c))
+             s <- many (sat (/= c))
              char c
-             return (Val (StrVal str))
+             return (Val (StrVal s))
 
 -- FUNCTION PARSER
 -- Function Call statement
@@ -387,21 +392,21 @@ pFuncCall = do name <- identifier
 --Argument Parser
 pArgs :: Parser [Expr]
 pArgs = do symbol "("
-           i <- pCSE []
-           return i
+           e <- (pCSE [])
+           return (e)
 
 -- Comma Sepereated Expressions Parser
 -- This check wither the endind is a ) or havind a commas before )
 pCSE :: [Expr] -> Parser [Expr]
 pCSE [] = (do symbol ")"
               return [])
-           ||| (do x <- pExpr
-                   pCSE [x])
-pCSE xs = (do symbol ","
-              x <- pExpr
-              pCSE (x:xs))
+           ||| (do e <- pExpr
+                   pCSE ([e]))
+pCSE es = (do symbol ","
+              e <- pExpr
+              pCSE (e:es))
            ||| (do symbol ")"
-                   return (reverse xs))
+                   return (reverse es))
 
 
 -- Define Function Parsers
@@ -414,14 +419,18 @@ pDef = do string "def"
           return (Func name vars commands)
 
 -- Comma Sepereated Variables parser
--- This check wither the endind is a ) or havind a commas before )
+-- This check whether the end is a ) or having a commas before a )
 pCSV :: [Name] -> Parser [Name]
 pCSV [] = (do symbol ")"
               return [])
-             ||| (do x <- identifier
-                     pCSV (x:[]))
-pCSV xs = (do symbol ","
-              x <- identifier
-              pCSV (x:xs))
+             ||| (do v <- identifier
+                     pCSV ([v]))
+pCSV vs = (do symbol ","
+              v <- identifier
+              pCSV (v:vs))
              ||| (do symbol ")"
-                     return (reverse xs))
+                     return (reverse vs))
+
+
+
+
