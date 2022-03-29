@@ -182,6 +182,7 @@ process st (FuncCall name exprs) = let scope :: LState
 -- 'process' will call 'repl' when done, so the system loops.
 
 repl :: InputM ()
+-- get the current state of the program
 repl = do st <- lift get
           input <- case cmds st of
             [] -> getInputLine "> "
