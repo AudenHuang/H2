@@ -379,23 +379,23 @@ pString = do c <- char '"' ||| char '\''
 -- Function call statement
 pFuncCallR :: Parser Expr
 pFuncCallR = do name <- identifier
-                args <- pBExpr
+                args <- pArgs
                 return (FuncCallR name args)
 
 -- Function call without a return statement 
 pFuncCall :: Parser Command
 pFuncCall = do name <- identifier
-               args <- pBExpr
+               args <- pArgs
                return (FuncCall name args)
 
 --Boolean Expr Parser
-pBExpr :: Parser [Expr]
-pBExpr = do symbol "("
+pArgs :: Parser [Expr]
+pArgs = do symbol "("
            e <- (pCSE [])
            return e
 
 -- Comma Sepereated Expressions Parser
--- This check wither the endind is a ) or havind a commas before )
+-- This check whether the end is a ) or having a commas before a )
 pCSE :: [Expr] -> Parser [Expr]
 pCSE [] = (do symbol ")"
               return [])
