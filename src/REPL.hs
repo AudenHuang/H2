@@ -184,6 +184,7 @@ process st (FuncCall name exprs) = let scope :: LState
 repl :: InputM ()
 -- get the current state of the program
 repl = do st <- lift get
+-- check the commands in the state
           input <- case cmds st of
             [] -> getInputLine "> "
             (x:xs) -> do lift $ put st {cmds = xs}
