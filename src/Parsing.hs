@@ -167,7 +167,7 @@ float                         :: Parser Float
 float                         =  token parseFloat
 
 
--- Statements Parser
+-------------------- Statements Parser -----------------
 pStatement :: Parser Command
 pStatement = (do pIfE)
              ||| (do pIf)
@@ -248,8 +248,7 @@ pReturn = do string "return"
 pSExpr :: Parser Command
 pSExpr = (do Expr <$> pOr) ||| (do Expr <$> pExpr)
 
--- Expr Parsers
-
+-------------------- Expr Parsers -----------------
 pExpr :: Parser Expr
 pExpr = (do symbol "input"
             return InputExpr)
@@ -310,7 +309,7 @@ pFactor = do f <- pFuncCallR
                                       return s
 
 
--- Boolean parser
+-------------------- Boolean Parser -----------------
 pBool       :: Parser Expr
 pBool       = (do e <- pExpr
                   symbol "<"
@@ -338,7 +337,7 @@ pBool       = (do e <- pExpr
                       return (LE e e2))
               ||| (do e <- identifier
                       return (Var e))
--- ! parser
+-- ! Parser
 pNot   :: Parser Expr
 pNot   = (do symbol "True"
              return (Val (BoolVal True))
@@ -353,14 +352,14 @@ pNot   = (do symbol "True"
                       f <- pOr
                       symbol ")"
                       return f)
--- && parser
+-- && Parser
 pAnd  :: Parser Expr
 pAnd  = do f <- pNot
            (do symbol "&&"
                f2 <- pNot
                return (And f f2))
              ||| return f
--- || parser
+-- || Parser
 pOr   :: Parser Expr
 pOr   = do f <- pAnd
            (do symbol "||"
@@ -376,22 +375,22 @@ pString = do c <- char '"' ||| char '\''
              char c
              return (Val (StrVal s))
 
--- FUNCTION PARSER
--- Function Call statement
+-------------------- Function Parser -----------------
+-- Function call statement
 pFuncCallR :: Parser Expr
 pFuncCallR = do name <- identifier
-                args <- pArgs
+                args <- pBExpr
                 return (FuncCallR name args)
 
--- Function without a return statement 
+-- Function call without a return statement 
 pFuncCall :: Parser Command
 pFuncCall = do name <- identifier
-               args <- pArgs
+               args <- pBExpr
                return (FuncCall name args)
 
---Argument Parser
-pArgs :: Parser [Expr]
-pArgs = do symbol "("
+--Boolean Expr Parser
+pBExpr :: Parser [Expr]
+pBExpr = do symbol "("
            e <- (pCSE [])
            return e
 
@@ -418,7 +417,7 @@ pDef = do string "def"
           commands <- pBlock
           return (Func name vars commands)
 
--- Comma Sepereated Variables parser
+-- Comma Sepereated Variables Parser
 -- This check whether the end is a ) or having a commas before a )
 pCSV :: [Name] -> Parser [Name]
 pCSV [] = (do symbol ")"
