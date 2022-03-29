@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Test where
 
 import REPL
@@ -6,26 +7,39 @@ import Parsing
 import Test.QuickCheck
 import Test.QuickCheck.All
 
-instance Arbitrary Value where
-  arbitrary = oneof [ return (IntVal i),
-                      return ()]
+data Op = Op String
+  deriving Show
 
-instance Arbitrary MathOp where
-  arbitrary = oneof [return "+",
-                    return "-",
-                    return "*".
-                    return "/",
-                    return "^",
-                    return "%"]
+instance Arbitrary Op where
+  arbitrary = do e <- elements "+-*/%^"
+                 return (Op $ filter (/='\'') $ show e)
 
--- instance Arbitraty Space where
+data Space = Space String
+  deriving Show
+
+instance Arbitrary Space where
+  arbitrary = do x <- listOf $ elements " "
+                 return (Space x)
+
+--instance Arbitrary Value where
+--  arbitrary = oneof [ return (IntVal i),
+--                      return ()]
+
+--instance Arbitrary Char where
+--  arbitrary = oneof [return "+",
+--                    return "-",
+--                    return "*",
+--                    return "/",
+--                    return "^",
+--                    return "%"]
+
+-- instance Arbitrary Space where
 --   arbitrary = oneof [ return "",
 --                       return " ",
 --                       return "  ",
 --                       return "   "]
-instance Arbitraty Space where
-  arbitraryS:: Int
-  arbitraryS x= return (replicate x " ")
+--instance Arbitrary Space where
+ -- arbitrary x = return (replicate x " ")
 
 
 
@@ -35,7 +49,7 @@ instance Arbitraty Space where
 
 
 
-prop_parseFlt 
+-- prop_parseFlt 
 
 -- PARSER TESTS - checks that parser converts strings to appropriate type representation
 
@@ -48,36 +62,36 @@ prop_parseFloat flt = case parse pExpr (show flt) of
 
 
 -- Checks that MathOP are correctly parsed for ints (ignoring whitespace)
-prop_parseMathOPInt :: Int -> Int -> Space -> MathOp -> Bool
-prop_parseMathOPInt x y (Space s) o| o == "+" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Add x y)
-                                     | o == "-" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Sub x y)
-                                     | o == "*" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Mul x y)
-                                     | o == "/" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Div x y)
-                                     | o == "^" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Pow x y)
-                                     | o == "%" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Mod x y)
+prop_parseMathOPInt :: Int -> Int -> Space -> Op -> Bool
+prop_parseMathOPInt x y (Space s) (Op o)| o == "+" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Add (Val (IntVal x)) (Val (IntVal y)), "")]
+                                     | o == "-" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Sub (Val (IntVal x)) (Val (IntVal y)), "")]
+                                     | o == "*" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Mul (Val (IntVal x)) (Val (IntVal y)), "")]
+                                     | o == "/" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Div (Val (IntVal x)) (Val (IntVal y)), "")]
+                                     | o == "^" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Pow (Val (IntVal x)) (Val (IntVal y)), "")]
+                                     | o == "%" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Mod (Val (IntVal x)) (Val (IntVal y)), "")]
 
 
 
 -- Checks that MathOP (+ - * / % ^) are correctly parsed for ints (ignoring whitespace)
-prop_parseMathOPFlt :: Float -> Float -> Space -> MathOp -> Bool
-prop_parseMathOPFlt x y (Space s) o | o == "+" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Add x y)
-                                    | o == "-" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Sub x y)
-                                    | o == "*" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Mul x y)
-                                    | o == "/" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Div x y)
-                                    | o == "^" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Pow x y)
-                                    | o == "%" = pExpr((show x) ++ s ++ o ++ s ++ (show y)) == (Mod x y)
+prop_parseMathOPFlt :: Float -> Float -> Space -> Op -> Bool
+prop_parseMathOPFlt x y (Space s) (Op o)| o == "+" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Add (Val (FltVal x)) (Val (FltVal y)), "")]
+                                     | o == "-" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Sub (Val (FltVal x)) (Val (FltVal y)), "")]
+                                     | o == "*" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Mul (Val (FltVal x)) (Val (FltVal y)), "")]
+                                     | o == "/" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Div (Val (FltVal x)) (Val (FltVal y)), "")]
+                                     | o == "^" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Pow (Val (FltVal x)) (Val (FltVal y)), "")]
+                                     | o == "%" = parse pExpr((show x) ++ s ++ o ++ s ++ (show y)) == [(Mod (Val (FltVal x)) (Val (FltVal y)), "")]
 
 -- Checks that Abs gets correctly parsed for ints
 prop_parseAbsInt :: Int -> Bool
-prop_parseAbsInt int = pExpr ("|" ++ show int ++ "|") == (Abs int)
+prop_parseAbsInt int = parse pExpr ("|" ++ show int ++ "|") == [(Abs (Val (IntVal int)), "")]
 
 -- Checks that Abs gets correctly parsed for floats
 prop_parseAbsFlt :: Float -> Bool
-prop_parseAbsInt flt = pExpr ("|" ++ show int ++ "|") == (Abs flt)
+prop_parseAbsFlt flt = parse pExpr ("|" ++ show flt ++ "|") == [(Abs (Val (FltVal flt)), "")]
 
 -- Checks that concatenate correctly parses
 prop_parseConcat :: String -> String -> Bool
-prop_parseConcat s1 s2 = pExpr ("\"" ++ s1 ++ "\"" ++ "++" ++  "\"" ++ s2 ++ "\"") == (Concat s1 s2)
+prop_parseConcat s1 s2 = parse pExpr ("\"" ++ s1 ++ "\"" ++ "++" ++  "\"" ++ s2 ++ "\"") == [(Concat (Val (StrVal s1)) (Val (StrVal s2)), "")]
 
 
 -- Expr TESTS - checks that eval operates correctly
@@ -85,4 +99,6 @@ prop_parseConcat s1 s2 = pExpr ("\"" ++ s1 ++ "\"" ++ "++" ++  "\"" ++ s2 ++ "\"
 return []
 runTests = $quickCheckAll
 
-main :: IO ()
+main :: IO Bool
+main = do putStrLn "Start Testing"
+          runTests
