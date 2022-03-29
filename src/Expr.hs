@@ -71,21 +71,29 @@ searchBinTree name' (Node (name, value) binTreeL binTreeR)
   | name' > name = searchBinTree name' binTreeR
   | otherwise    = Right value
 
+-- Evaluating the input
+-- Returns a value or an error
 eval :: BinTree -> -- Variable name to value mapping
         Expr -> -- Expression to evaluate
         Either Error Value -- Result (if no errors such as missing variables)
+
+-- If the input is a plain value (if it is string, integer, float or an boolean value)
+-- Returns the input 
 eval vars (Val x)      = Right x -- for values, just give the value directly
 
+-- If the input is a variable search through the binary tree to find its' value
+-- Returns the value of that variable
 eval vars (Var x)      = searchBinTree x vars
 
--- string concatenation (if not both x and y are a string return an error, left)
+-- If the input is an expr for string concatenation
+-- Returns concated string if both input value x and y are a string else returns an error (Left)
 eval vars (Concat x y) = case (eval vars x, eval vars y) of
   (Right (StrVal a), Right (StrVal b))    -> Right (StrVal (a ++ b))
   (Right (StrVal a), Right otherVal)      -> Left (ErrorExpr "Concat" (show otherVal ++ " is not a string"))
   (Right (StrVal a), Left undefineValue)  -> Left undefineValue
   (Right otherVal, _)                     -> Left (ErrorExpr "Concat" (show otherVal ++ " is not a string"))
   (Left undefineValue, _)                 -> Left undefineValue
-  
+
 eval vars InputExpr         = Right Input
 
 --evaluating toString, toInt and toString and return a value in the correct Value "type" if thers's no error else return left
@@ -115,10 +123,16 @@ eval vars (FuncCallR name args) = let toString :: [Expr] -> Either Error Value
                                               "toInt"    -> toInt args
                                               "toFloat"  -> toFlt args
                                               _          -> Right (FunCall name args)
+
+-- If the input is an expression for Abs
+-- Returns the absolute value of the input value or an error (if the input value isn't a number)
 eval vars (Abs x)             = case eval vars x of
                                      Right (IntVal i) -> Right (IntVal (abs i))
                                      Right (FltVal f) -> Right (FltVal (abs f))
-                                     _                -> Left (ErrorExpr "Abs" (show x ++ " isn't an integer or float"))
+                                     _                -> Left (ErrorExpr "Abs" (show x ++ " isn't a number"))
+                                     
+-- If the input is an expression for Mod, modulo x by y
+-- Returns the modulo result (if both x and y are integer) or an error
 eval vars (Mod x y)           = case (eval vars x, eval vars y) of
                                      (Right (IntVal a), Right (IntVal b)) -> Right (IntVal (mod a b))
                                      (Right (IntVal a), Right not_int) -> Left (ErrorExpr "Mod" (show not_int ++ " isn't an integer"))
