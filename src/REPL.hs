@@ -198,6 +198,9 @@ repl = do st <- lift get
                     [(cmd, "")] -> 
                       -- check the type of command and process accordingly
                       case cmd of
+                        (Import filepath) -> do text <- lift $ lift (readFile filepath)
+                                                lift $ put st {cmds = lines text ++ cmds st}
+                                                repl
                         (Set var expr) -> do st' <- process st cmd
                                              if var `notElem` wrds st'
                                               then do lift $ put st' {wrds = var : wrds st'}
