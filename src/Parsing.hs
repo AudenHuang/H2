@@ -127,14 +127,34 @@ int                           =  do char '-'
                                     return (-n)
                                   ||| nat
 
+dec                           :: Parser String
+dec                           =  do xs <- many1 alphanum
+                                    return xs
+
+dec2 :: Parser String 
+dec2 = do xs <- many1 digit
+          return xs
+
 -- Parse the integer (numbers until reacing '.') and save it to i
 -- Parse the decimal number (numbers after the '.') and save it to d
 -- Returnsa string that combined the integer with a '.' and the decmal number
 parseFloat                    :: Parser Float
 parseFloat                    =  do i <- int
                                     char '.'
-                                    d <- nat
-                                    return (read (show i ++ "." ++ show d))
+                                    d <- dec2
+                                    string "e-"
+                                    e <- int
+                                    return (read (show i ++ "." ++ d)/(10^abs e))
+                                 ||| do char '-'
+                                        i <- int
+                                        char '.'
+                                        d <- dec
+                                        return (-read (show i ++ "." ++ d))
+                                 ||| do i <- int
+                                        char '.'
+                                        d <- dec
+                                        return (read (show i ++ "." ++ d))
+                                 
 
 space                         :: Parser ()
 space                         =  do many (sat isSpace)
@@ -173,6 +193,7 @@ pStatement = (do pIfE)
              ||| (do pIf)
              ||| (do pWhile)
              ||| (do pQuit)
+             ||| (do pImport)
              ||| (do pSet)
              ||| (do pPrint)
              ||| (do pDef)
@@ -213,6 +234,15 @@ pWhile = do string "while"
             space
             block <- pBlock
             return (While expression block)
+
+-- Import statments
+pImport :: Parser Command
+pImport = do string "import"
+             space
+             ch <- char '"' 
+             filepath <- many (sat (/= ch))
+             char ch
+             return (Import filepath)
 
 -- Set variables
 pSet :: Parser Command
@@ -429,7 +459,5 @@ pCSV vs = (do symbol ","
               pCSV (v:vs))
              ||| (do symbol ")"
                      return (reverse vs))
-
-
 
 
