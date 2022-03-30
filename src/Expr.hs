@@ -144,21 +144,27 @@ eval vars (Mod x y)           = case (eval vars x, eval vars y) of
 eval vars expr = 
   case expr of
        --mathOP cases
-       Add e e2    -> mathOP vars "+" e e2
-       Sub e e2    -> mathOP vars "-" e e2
-       Mul e e2    -> mathOP vars "*" e e2
-       Div e e2    -> mathOP vars "/" e e2
-       Pow e e2    -> mathOP vars "**" e e2
+       Add e e2    -> mathOP vars (+) e e2
+       Sub e e2    -> mathOP vars (-) e e2
+       Mul e e2    -> mathOP vars (*) e e2
+       Div e e2    -> mathOP vars (/) e e2
+       Pow e e2    -> mathOP vars (**) e e2
        --boolOp cases
-       Eq e e2     -> boolOp vars "EQ" e e2
-       NE e e2     -> boolOp vars "LT, GT" e e2
-       Lt e e2     -> boolOp vars "LT" e e2
-       Gt e e2     -> boolOp vars "GT" e e2
-       LE e e2     -> boolOp vars "LT, EQ" e e2
-       GE e e2     -> boolOp vars "GT, EQ" e e2
+      --  Eq e e2     -> boolOp vars EQ EQ e e2
+      --  NE e e2     -> boolOp vars LT GT e e2
+      --  Lt e e2     -> boolOp vars LT LT e e2
+      --  Gt e e2     -> boolOp vars GT GT e e2
+      --  LE e e2     -> boolOp vars LT EQ e e2
+      --  GE e e2     -> boolOp vars GT EQ e e2
+       Eq e e2     -> boolOp vars [EQ] e e2
+       NE e e2     -> boolOp vars [LT, GT] e e2
+       Lt e e2     -> boolOp vars [LT] e e2
+       Gt e e2     -> boolOp vars [GT] e e2
+       LE e e2     -> boolOp vars [LT, EQ] e e2
+       GE e e2     -> boolOp vars [GT, EQ] e e2
        --logical operator
-       And e e2    -> logicalOp vars "&&" e e2
-       Or  e e2    -> logicalOp vars "||" e e2
+       And e e2    -> logicalOp vars (&&) e e2
+       Or  e e2    -> logicalOp vars (||) e e2
        --reverseOp case
        Not e       -> reverseBoolOp   vars expr
        --operations that isn't defined in the code
@@ -167,32 +173,32 @@ eval vars expr =
 
 -- Math operations
 -- Returns a numeric value or an error
-mathOP :: BinTree -> String -> Expr -> Expr -> Either Error Value
-mathOP vars mOp x y =     case (eval vars x, eval vars y) of
-                               (Right (FltVal a), Right (FltVal b)) -> Right (FltVal ((mOp) a b))
-                               (Right (FltVal f), Right (IntVal i)) -> Right (FltVal ((mOp) f (fromIntegral i)))
-                               (Right (IntVal i), Right (FltVal f)) -> Right (FltVal ((mOp) (fromIntegral i) f))
-                               (Right (IntVal a), Right (IntVal b)) -> Right (IntVal (round ((mOp) (fromIntegral a) (fromIntegral b))))
-                               (Right (FltVal f), Right not_num)    -> Left (ErrorExpr "mathOP" (show not_num ++ " is not a number"))
-                               (Right (IntVal i), Right not_num)    -> Left (ErrorExpr "mathOP" (show not_num ++ " is not a number"))
-                               (Right (FltVal f), Left undefineValue)    -> Left undefineValue
-                               (Right (IntVal f), Left undefineValue)    -> Left undefineValue
-                               (Right not_num, _)                   -> Left (ErrorExpr "mathOP" (show not_num ++ " is not a number"))
-                               (Left undefineValue, _)                   -> Left undefineValue
+mathOP :: BinTree -> Operator -> Expr -> Expr -> Either Error Value
+mathOP vars mOp x y = case (eval vars x, eval vars y) of
+                           (Right (FltVal f1), Right (FltVal f2) ) -> Right (FltVal (mOp f1 f2))
+                           (Right (FltVal f ), Right (IntVal i ) ) -> Right (FltVal (mOp f (fromIntegral i)))
+                           (Right (IntVal i ), Right (FltVal f ) ) -> Right (FltVal (mOp (fromIntegral i) f))
+                           (Right (IntVal i1), Right (IntVal i2) ) -> Right (IntVal (round (mOp (fromIntegral i1) (fromIntegral i2))))
+                           (Right (FltVal f ), Right notNum      ) -> Left (ErrorExpr "mathOP" (show notNum ++ " is not a number"))
+                           (Right (IntVal i ), Right notNum      ) -> Left (ErrorExpr "mathOP" (show notNum ++ " is not a number"))
+                           (Right (FltVal f ), Left undefineValue) -> Left undefineValue
+                           (Right (IntVal i ), Left undefineValue) -> Left undefineValue
+                           (Right notNum, _ )                      -> Left (ErrorExpr "mathOP" (show notNum ++ " is not a number"))
+                           (Left undefineValue, _)                 -> Left undefineValue
 
 -- Boolean operations
 -- Returns True or false (a boolean value) or an error
-boolOp :: BinTree -> String -> Expr -> Expr -> Either Error Value
-boolOp vars bOp x y =     case (eval vars x, eval vars y) of
-                               (Right (StrVal  a), Right (StrVal  b)) -> Right (BoolVal (compare a b `elem` [bOp]))
-                               (Right (FltVal  a), Right (FltVal  b)) -> Right (BoolVal (compare a b `elem` [bOp]))
-                               (Right (FltVal  a), Right (IntVal  b)) -> Right (BoolVal (compare a (fromIntegral b) `elem` [bOp]))
-                               (Right (IntVal  a), Right (FltVal  b)) -> Right (BoolVal (compare (fromIntegral a) b `elem` [bOp]))
-                               (Right (IntVal  a), Right (IntVal  b)) -> Right (BoolVal (compare a b `elem` [bOp]))
-                               (Right (BoolVal a), Right (BoolVal b)) -> Right (BoolVal (compare a b `elem` [bOp]))
-                               (Right a, Right b) -> Left (ErrorExpr "boolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
-                               (Right _, Left undefineValue) -> Left undefineValue
-                               (Left undefineValue, _) -> Left undefineValue
+boolOp :: BinTree -> [Ordering] -> Expr -> Expr -> Either Error Value
+boolOp vars bOp x y = case (eval vars x, eval vars y) of
+                           (Right (StrVal  s1), Right (StrVal  s2)) -> Right (BoolVal (compare s1 s2 `elem` bOP))
+                           (Right (FltVal  f1), Right (FltVal  f2)) -> Right (BoolVal (compare f1 f2 `elem` bOP))
+                           (Right (FltVal  f ), Right (IntVal   i)) -> Right (BoolVal (compare f (fromIntegral i) `elem` bOP))
+                           (Right (IntVal  i ), Right (FltVal   f)) -> Right (BoolVal (compare (fromIntegral i) f `elem` bOP))
+                           (Right (IntVal  i ), Right (IntVal   i)) -> Right (BoolVal (compare i i `elem` bOP))
+                           (Right (BoolVal b1), Right (BoolVal b2)) -> Right (BoolVal (compare b1 b2 `elem` bOP))
+                           (Right b1, Right b2)                     -> Left (ErrorExpr "boolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
+                           (Right _, Left undefineValue) -> Left undefineValue
+                           (Left undefineValue, _) -> Left undefineValue
                                
 -- Reversing the boolean value with !
 -- Returns an boolean vallue or an error
@@ -204,9 +210,8 @@ reverseBoolOp vars (Not x) = case eval vars x of
 
 -- Logical operations with && and ||
 -- Returns a boolean value or an error
-logicalOp :: BinTree -> String -> Expr -> Expr -> Either Error Value
+logicalOp :: BinTree -> Operator -> Expr -> Expr -> Either Error Value
 logicalOp vars lOp x y =     case (eval vars x, eval vars y) of
-                                  (Right (BoolVal a), Right (BoolVal b)) -> Right (BoolVal ((lOp) a b) )
-                                  (Right a, Right b) -> Left (ErrorExpr "logicalOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
+                                  (Right (BoolVal a), Right (BoolVal b)) -> Right (BoolVal (lOp a b) )
                                   (Right _, Left undefineValue) -> Left undefineValue
                                   (Left undefineValue, _) -> Left undefineValue
