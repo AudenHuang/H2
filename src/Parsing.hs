@@ -127,34 +127,14 @@ int                           =  do char '-'
                                     return (-n)
                                   ||| nat
 
-dec                           :: Parser String
-dec                           =  do xs <- many1 alphanum
-                                    return xs
-
-dec2 :: Parser String 
-dec2 = do xs <- many1 digit
-          return xs
-
 -- Parse the integer (numbers until reacing '.') and save it to i
 -- Parse the decimal number (numbers after the '.') and save it to d
 -- Returnsa string that combined the integer with a '.' and the decmal number
 parseFloat                    :: Parser Float
 parseFloat                    =  do i <- int
                                     char '.'
-                                    d <- dec2
-                                    string "e-"
-                                    e <- int
-                                    return (read (show i ++ "." ++ d)/(10^abs e))
-                                 ||| do char '-'
-                                        i <- int
-                                        char '.'
-                                        d <- dec
-                                        return (-read (show i ++ "." ++ d))
-                                 ||| do i <- int
-                                        char '.'
-                                        d <- dec
-                                        return (read (show i ++ "." ++ d))
-                                 
+                                    d <- nat
+                                    return (read (show i ++ "." ++ show d))
 
 space                         :: Parser ()
 space                         =  do many (sat isSpace)
