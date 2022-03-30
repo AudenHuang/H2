@@ -194,7 +194,9 @@ boolOp vars bOp x y = case (eval vars x, eval vars y) of
                            (Right (FltVal  f1), Right (FltVal  f2)) -> Right (BoolVal (compare f1 f2 `elem` bOP))
                            (Right (FltVal  f ), Right (IntVal   i)) -> Right (BoolVal (compare f (fromIntegral i) `elem` bOP))
                            (Right (IntVal  i ), Right (FltVal   f)) -> Right (BoolVal (compare (fromIntegral i) f `elem` bOP))
-                           (Right (IntVal  i1 ), Right (IntVal   i2)) -> Right (BoolVal (compare i1 i2 `elem` bOP))
+
+                           (Right (IntVal  i1), Right (IntVal  i2)) -> Right (BoolVal (compare i1 i2 `elem` bOP))
+
                            (Right (BoolVal b1), Right (BoolVal b2)) -> Right (BoolVal (compare b1 b2 `elem` bOP))
                            (Right b1, Right b2)                     -> Left (ErrorExpr "boolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
                            (Right _, Left undefineValue) -> Left undefineValue
