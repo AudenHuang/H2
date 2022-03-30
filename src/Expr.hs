@@ -150,12 +150,12 @@ eval vars expr =
        Div e e2    -> mathOP vars expr
        Pow e e2    -> mathOP vars expr
        --boolOp cases
-       Eq e e2     -> boolOp vars expr
-       NE e e2     -> boolOp vars expr
-       Lt e e2     -> boolOp vars expr
-       Gt e e2     -> boolOp vars expr
-       LE e e2     -> boolOp vars expr
-       GE e e2     -> boolOp vars expr
+       Eq e e2     -> boolOp vars [EQ] e e2
+       NE e e2     -> boolOp vars [LT, GT] e e2
+       Lt e e2     -> boolOp vars [LT] e e2
+       Gt e e2     -> boolOp vars [GT] e e2
+       LE e e2     -> boolOp vars [LT, EQ] e e2
+       GE e e2     -> boolOp vars [GT, EQ] e e2
        --logical operator
        And e e2    -> logicalOp vars expr
        Or  e e2    -> logicalOp vars expr
@@ -188,24 +188,17 @@ mathOP vars expr = let (mOp, x, y) = case expr of
 
 -- Boolean operations
 -- Returns True or false (a boolean value) or an error
-boolOp :: BinTree -> Expr -> Either Error Value
-boolOp vars expr = let (bOp, x, y) = case expr of
-                                               Lt e1 e2 -> ([LT],  e1, e2)
-                                               Gt e1 e2 -> ([GT],  e1, e2)
-                                               LE e1 e2 -> ([LT, EQ], e1, e2)
-                                               GE e1 e2 -> ([GT, EQ], e1, e2)
-                                               Eq e1 e2 -> ([EQ], e1, e2)
-                                               NE e1 e2 -> ([LT, GT], e1, e2)
-                       in case (eval vars x, eval vars y) of
-                               (Right (StrVal  a), Right (StrVal  b)) -> Right (BoolVal (compare a b `elem` bOp))
-                               (Right (FltVal  a), Right (FltVal  b)) -> Right (BoolVal (compare a b `elem` bOp))
-                               (Right (FltVal  a), Right (IntVal  b)) -> Right (BoolVal (compare a (fromIntegral b) `elem` bOp))
-                               (Right (IntVal  a), Right (FltVal  b)) -> Right (BoolVal (compare (fromIntegral a) b `elem` bOp))
-                               (Right (IntVal  a), Right (IntVal  b)) -> Right (BoolVal (compare a b `elem` bOp))
-                               (Right (BoolVal a), Right (BoolVal b)) -> Right (BoolVal (compare a b `elem` bOp))
-                               (Right a, Right b) -> Left (ErrorExpr "boolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
-                               (Right _, Left undefineValue) -> Left undefineValue
-                               (Left undefineValue, _) -> Left undefineValue
+boolOp :: BinTree -> [Ordering] -> Expr -> Expr -> Either Error Value
+boolOp vars bOp x y = case (eval vars x, eval vars y) of
+                           (Right (StrVal  s1), Right (StrVal  s2)) -> Right (BoolVal (compare s1 s2 `elem` bOp))
+                           (Right (FltVal  f1), Right (FltVal  f2)) -> Right (BoolVal (compare f1 f2 `elem` bOp))
+                           (Right (FltVal  f ), Right (IntVal   i)) -> Right (BoolVal (compare f (fromIntegral i) `elem` bOp))
+                           (Right (IntVal  i ), Right (FltVal   f)) -> Right (BoolVal (compare (fromIntegral i) f `elem` bOp))
+                           (Right (IntVal  i1), Right (IntVal  i2)) -> Right (BoolVal (compare i1 i2 `elem` bOp))
+                           (Right (BoolVal b1), Right (BoolVal b2)) -> Right (BoolVal (compare b1 b2 `elem` bOp))
+                           (Right b1, Right b2)                     -> Left (ErrorExpr "boolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
+                           (Right _, Left undefineValue) -> Left undefineValue
+                           (Left undefineValue, _) -> Left undefineValue
                                
 -- Reversing the boolean value with !
 -- Returns an boolean vallue or an error
