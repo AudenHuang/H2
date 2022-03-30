@@ -16,10 +16,6 @@ data Bop = Bop String
 data Lop = Lop String
   deriving Show
 
-instance Arbitrary Value where
-  arbitrary = oneof [return (BoolVal True),
-                     return (BoolVal False)]
-
 instance Arbitrary Mop where
   arbitrary = oneof [return (Mop "+"),
                      return (Mop "-"),
