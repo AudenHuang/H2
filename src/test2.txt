@@ -1,0 +1,3 @@
+def inc(y){x=1 init=0 while(init<y){print x x=x+1 init=init+1}}
+inc(7)
+print "Successful import!"
