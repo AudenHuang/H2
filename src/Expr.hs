@@ -188,7 +188,7 @@ mathOP vars expr = let (mOp, x, y) = case expr of
 
 -- Boolean operations
 -- Returns True or false (a boolean value) or an error
-boolOp :: BinTree -> [Ordering] -> Expr -> Expr -> Either Error Value
+boolOp :: BinTree -> Expr -> Expr -> [Ordering] -> Either Error Value
 boolOp vars x y bOp = case (eval vars x, eval vars y) of
                            (Right (StrVal  s1), Right (StrVal  s2)) -> Right (BoolVal (compare s1 s2 `elem` bOp))
                            (Right (FltVal  f1), Right (FltVal  f2)) -> Right (BoolVal (compare f1 f2 `elem` bOp))
