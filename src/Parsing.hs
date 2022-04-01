@@ -240,9 +240,9 @@ pImport :: Parser Command
 pImport = do string "import"
              space
              ch <- char '"' 
-             filepath <- many (sat (/= ch))
+             path <- many (sat (/= ch))
              char ch
-             return (Import filepath)
+             return (Import path)
 
 -- Set variables
 pSet :: Parser Command
@@ -358,13 +358,14 @@ pBool       = (do e <- pExpr
                       e2 <- pExpr
                       return (NE e e2))
               ||| (do e <- pExpr
-                      symbol ">="
-                      e2 <- pExpr
-                      return (GE e e2))
-              ||| (do e <- pExpr
                       symbol "<="
                       e2 <- pExpr
                       return (LE e e2))
+              ||| (do e <- pExpr
+                      symbol ">="
+                      e2 <- pExpr
+                      return (GE e e2))
+
               ||| (do e <- identifier
                       return (Var e))
 -- ! Parser
