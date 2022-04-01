@@ -150,17 +150,17 @@ eval vars expr =
        Div e e2    -> mathOP vars expr
        Pow e e2    -> mathOP vars expr
        --boolOp cases
-       Eq e e2     -> boolOp vars [EQ] e e2
-       NE e e2     -> boolOp vars [LT, GT] e e2
-       Lt e e2     -> boolOp vars [LT] e e2
-       Gt e e2     -> boolOp vars [GT] e e2
-       LE e e2     -> boolOp vars [LT, EQ] e e2
-       GE e e2     -> boolOp vars [GT, EQ] e e2
+       Eq e e2     -> boolOp vars e e2 [EQ]
+       NE e e2     -> boolOp vars e e2 [LT, GT] 
+       Lt e e2     -> boolOp vars e e2 [LT]
+       Gt e e2     -> boolOp vars e e2 [GT]
+       LE e e2     -> boolOp vars e e2 [LT, EQ] 
+       GE e e2     -> boolOp vars e e2 [GT, EQ]
        --logical operator
        And e e2    -> logicalOp vars expr
        Or  e e2    -> logicalOp vars expr
        --reverseOp case
-       Not e       -> reverseBoolOp   vars expr
+       Not e       -> nBoolOp   vars expr
        --operations that isn't defined in the code
        undefineOp  -> Left (ErrorExpr (show undefineOp) ("Unknown operations: " ++ show undefineOp))
 
@@ -189,7 +189,7 @@ mathOP vars expr = let (mOp, x, y) = case expr of
 -- Boolean operations
 -- Returns True or false (a boolean value) or an error
 boolOp :: BinTree -> [Ordering] -> Expr -> Expr -> Either Error Value
-boolOp vars bOp x y = case (eval vars x, eval vars y) of
+boolOp vars x y bOp = case (eval vars x, eval vars y) of
                            (Right (StrVal  s1), Right (StrVal  s2)) -> Right (BoolVal (compare s1 s2 `elem` bOp))
                            (Right (FltVal  f1), Right (FltVal  f2)) -> Right (BoolVal (compare f1 f2 `elem` bOp))
                            (Right (FltVal  f ), Right (IntVal   i)) -> Right (BoolVal (compare f (fromIntegral i) `elem` bOp))
@@ -202,11 +202,11 @@ boolOp vars bOp x y = case (eval vars x, eval vars y) of
                                
 -- Reversing the boolean value with !
 -- Returns an boolean vallue or an error
-reverseBoolOp :: BinTree -> Expr -> Either Error Value
-reverseBoolOp vars (Not x) = case eval vars x of
-  Right (BoolVal  a) -> Right (BoolVal (not a))
-  Right not_bool -> Left (ErrorExpr "not" (show not_bool ++ " is not a boolean"))
-  Left undefineValue -> Left undefineValue
+nBoolOp :: BinTree -> Expr -> Either Error Value
+nBoolOp vars (Not x) = case eval vars x of
+                            Right (BoolVal  a) -> Right (BoolVal (not a))
+                            Right not_bool -> Left (ErrorExpr "not" (show not_bool ++ " is not a boolean"))
+                            Left undefineValue -> Left undefineValue
 
 -- Logical operations with && and ||
 -- Returns a boolean value or an error
