@@ -131,9 +131,9 @@ dec                           :: Parser String
 dec                           =  do xs <- many1 alphanum
                                     return xs
 
-dec2 :: Parser String 
-dec2 = do xs <- many1 digit
-          return xs
+dec2                          :: Parser String 
+dec2                          =  do xs <- many1 digit
+                                   return xs
 
 -- Parse the integer (numbers until reacing '.') and save it to i
 -- Parse the decimal number (numbers after the '.') and save it to d
