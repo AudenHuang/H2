@@ -167,7 +167,7 @@ eval vars expr =
 
 -- Math operations
 -- Returns a numeric value or an error
-mathOP :: BinTree -> Expr -> Either Error Value
+mathOP :: BinTree -> Expr -> Expr -> String -> Either Error Value
 mathOP vars x y mOp = let op = case mOp of
                                     "+"  -> (+)
                                     "-"  -> (-)
