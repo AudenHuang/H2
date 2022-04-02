@@ -111,13 +111,13 @@ eval vars (FuncCallR name args) = let toString :: [Expr] -> Either Error Value
                                                            Right (StrVal s) -> Right (IntVal (round(read s::Float)))
                                                            Right (FltVal f) -> Right (IntVal (round f))
                                                            Right (IntVal i) -> Right (IntVal i)
-                                                           _               ->  Left (ErrorExpr "toInt" (show args ++ " can't convert to int"))
+                                                           _                ->  Left (ErrorExpr "toInt" (show args ++ " can't convert to int"))
                                       toFlt :: [Expr] -> Either Error Value
                                       toFlt [expr]  = case eval vars expr of
                                                            Right (StrVal s) -> Right (FltVal (read s :: Float))
                                                            Right (IntVal i) -> Right (FltVal (read (show i)::Float))
                                                            Right (FltVal f) -> Right (FltVal f)
-                                                           _               ->  Left (ErrorExpr "toFlt" (show args ++ " can't convert to float"))
+                                                           _                ->  Left (ErrorExpr "toFlt" (show args ++ " can't convert to float"))
 
                                       in case name of
                                               "toString" -> toString args
@@ -135,34 +135,34 @@ eval vars (Abs x)             = case eval vars x of
 -- If the input is an expression for Mod, modulo x by y
 -- Returns the modulo result (if both x and y are integer) or an error
 eval vars (Mod x y)           = case (eval vars x, eval vars y) of
-                                     (Right (IntVal a), Right (IntVal b)) -> Right (IntVal (mod a b))
-                                     (Right (IntVal a), Right not_int) -> Left (ErrorExpr "Mod" (show not_int ++ " isn't an integer"))
-                                     (Right (IntVal a), Left undefineValue) -> Left undefineValue
-                                     (Right not_int, _) -> Left (ErrorExpr "Mod" (show not_int ++ " is not an integer"))
+                                     (Right (IntVal i1), Right (IntVal i2)) -> Right (IntVal (mod i1 i2))
+                                     (Right (IntVal i), Right otherVal) -> Left (ErrorExpr "Mod" (show otherVal ++ " isn't an integer"))
+                                     (Right (IntVal i), Left undefineValue) -> Left undefineValue
+                                     (Right otherVal, _) -> Left (ErrorExpr "Mod" (show otherVal ++ " is not an integer"))
                                      (Left undefineValue, _) -> Left undefineValue
 -- Put the expression through the right operation
 eval vars expr = 
   case expr of
        --mathOP cases
-       Add e e2    -> mathOP    vars e e2 "+"
-       Sub e e2    -> mathOP    vars e e2 "-"
-       Mul e e2    -> mathOP    vars e e2 "*"
-       Div e e2    -> mathOP    vars e e2 "/"
-       Pow e e2    -> mathOP    vars e e2 "^"
+       Add x y    -> mathOP    vars x y "+"
+       Sub x y    -> mathOP    vars x y "-"
+       Mul x y    -> mathOP    vars x y "*"
+       Div x y    -> mathOP    vars x y "/"
+       Pow x y    -> mathOP    vars x y "^"
        --boolOp cases
-       Eq  e e2    -> boolOp    vars e e2 [EQ]
-       NE  e e2    -> boolOp    vars e e2 [LT, GT] 
-       Lt  e e2    -> boolOp    vars e e2 [LT]
-       Gt  e e2    -> boolOp    vars e e2 [GT]
-       LE  e e2    -> boolOp    vars e e2 [LT, EQ] 
-       GE  e e2    -> boolOp    vars e e2 [GT, EQ]
+       Eq  x y    -> boolOp    vars x y [EQ]
+       NE  x y    -> boolOp    vars x y [LT, GT] 
+       Lt  x y    -> boolOp    vars x y [LT]
+       Gt  x y    -> boolOp    vars x y [GT]
+       LE  x y    -> boolOp    vars x y [LT, EQ] 
+       GE  x y    -> boolOp    vars x y [GT, EQ]
        --logical operator
-       And e e2    -> logicalOp vars e e2 "&&"
-       Or  e e2    -> logicalOp vars e e2 "||"
+       And x y    -> logicalOp vars x y "&&"
+       Or  x y    -> logicalOp vars x y "||"
        --reverseOp case
-       Not e       -> nBoolOp   vars expr
+       Not x      -> nBoolOp   vars expr
        --operations that isn't defined in the code
-       undefineOp  -> Left (ErrorExpr (show undefineOp) ("Unknown operations: " ++ show undefineOp))
+       undefineOp -> Left (ErrorExpr (show undefineOp) ("Unknown operations: " ++ show undefineOp))
 
 
 -- Math operations
@@ -175,47 +175,47 @@ mathOP vars x y mOp = let op = case mOp of
                                     "/"  -> (/)
                                     "^"  -> (**)
                        in case (eval vars x, eval vars y) of
-                               (Right (FltVal a), Right (FltVal b)) -> Right (FltVal (op a b))
-                               (Right (FltVal f), Right (IntVal i)) -> Right (FltVal (op f (fromIntegral i)))
-                               (Right (IntVal i), Right (FltVal f)) -> Right (FltVal (op (fromIntegral i) f))
-                               (Right (IntVal a), Right (IntVal b)) -> Right (IntVal (round (op (fromIntegral a) (fromIntegral b))))
-                               (Right (FltVal f), Right not_num)    -> Left (ErrorExpr "mathOP" (show not_num ++ " is not a number"))
-                               (Right (IntVal i), Right not_num)    -> Left (ErrorExpr "mathOP" (show not_num ++ " is not a number"))
-                               (Right (FltVal f), Left undefineValue)    -> Left undefineValue
-                               (Right (IntVal f), Left undefineValue)    -> Left undefineValue
-                               (Right not_num, _)                   -> Left (ErrorExpr "mathOP" (show not_num ++ " is not a number"))
-                               (Left undefineValue, _)                   -> Left undefineValue
+                               (Right (FltVal f1), Right  (FltVal f2)) -> Right (FltVal (op f1 f2))
+                               (Right (FltVal  f), Right  (IntVal  i)) -> Right (FltVal (op f (fromIntegral i)))
+                               (Right (IntVal  i), Right  (FltVal  f)) -> Right (FltVal (op (fromIntegral i) f))
+                               (Right (IntVal i1), Right  (IntVal i2)) -> Right (IntVal (round (op (fromIntegral i1) (fromIntegral i2))))
+                               (Right (FltVal  f), Right     otherVal) -> Left (ErrorExpr "mathOP" (show otherVal ++ " is not a number"))
+                               (Right (IntVal  i), Right     otherVal) -> Left (ErrorExpr "mathOP" (show otherVal ++ " is not a number"))
+                               (Right (FltVal  f), Left undefineValue) -> Left undefineValue
+                               (Right (IntVal  i), Left undefineValue) -> Left undefineValue
+                               (Right otherVal, _)                     -> Left (ErrorExpr "mathOP" (show otherVal ++ " is not a number"))
+                               (Left undefineValue, _)                 -> Left undefineValue
 
 -- Boolean operations
 -- Returns True or false (a boolean value) or an error
 boolOp :: BinTree -> Expr -> Expr -> [Ordering] -> Either Error Value
 boolOp vars x y bOp = case (eval vars x, eval vars y) of
-                           (Right (StrVal  s1), Right (StrVal  s2)) -> Right (BoolVal (compare s1 s2 `elem` bOp))
-                           (Right (FltVal  f1), Right (FltVal  f2)) -> Right (BoolVal (compare f1 f2 `elem` bOp))
-                           (Right (FltVal  f ), Right (IntVal   i)) -> Right (BoolVal (compare f (fromIntegral i) `elem` bOp))
-                           (Right (IntVal  i ), Right (FltVal   f)) -> Right (BoolVal (compare (fromIntegral i) f `elem` bOp))
-                           (Right (IntVal  i1), Right (IntVal  i2)) -> Right (BoolVal (compare i1 i2 `elem` bOp))
-                           (Right (BoolVal b1), Right (BoolVal b2)) -> Right (BoolVal (compare b1 b2 `elem` bOp))
-                           (Right b1, Right b2)                     -> Left (ErrorExpr "boolOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
-                           (Right _, Left undefineValue) -> Left undefineValue
-                           (Left undefineValue, _) -> Left undefineValue
+                           (Right (StrVal   s1), Right (StrVal  s2)) -> Right (BoolVal (compare s1 s2 `elem` bOp))
+                           (Right (FltVal   f1), Right (FltVal  f2)) -> Right (BoolVal (compare f1 f2 `elem` bOp))
+                           (Right (FltVal    f), Right (IntVal   i)) -> Right (BoolVal (compare f (fromIntegral i) `elem` bOp))
+                           (Right (IntVal    i), Right (FltVal   f)) -> Right (BoolVal (compare (fromIntegral i) f `elem` bOp))
+                           (Right (IntVal   i1), Right (IntVal  i2)) -> Right (BoolVal (compare i1 i2 `elem` bOp))
+                           (Right (BoolVal  b1), Right (BoolVal b2)) -> Right (BoolVal (compare b1 b2 `elem` bOp))
+                           (Right b1, Right b2)                      -> Left (ErrorExpr "boolOp" ("Boolean operations don't work between " ++ show x ++ " and " ++ show y))
+                           (Right _, Left undefineValue)             -> Left undefineValue
+                           (Left undefineValue, _)                   -> Left undefineValue
                                
 -- Reversing the boolean value with !
 -- Returns an boolean vallue or an error
 nBoolOp :: BinTree -> Expr -> Either Error Value
 nBoolOp vars (Not x) = case eval vars x of
                             Right (BoolVal  a) -> Right (BoolVal (not a))
-                            Right not_bool -> Left (ErrorExpr "not" (show not_bool ++ " is not a boolean"))
+                            Right otherVal     -> Left (ErrorExpr "not" (show otherVal ++ " is not a boolean"))
                             Left undefineValue -> Left undefineValue
 
 -- Logical operations with && and ||
 -- Returns a boolean value or an error
 logicalOp :: BinTree -> Expr -> Expr -> String -> Either Error Value
 logicalOp vars x y lOp = let op = case lOp of
-                                       "&&"-> (&&)
-                                       "||"-> (||)
+                                       "&&" -> (&&)
+                                       "||" -> (||)
                           in case (eval vars x, eval vars y) of
-                                  (Right (BoolVal a), Right (BoolVal b)) -> Right (BoolVal (op a b) )
-                                  (Right a, Right b) -> Left (ErrorExpr "logicalOp" ("Bool operations between " ++ show x ++ " and " ++ show y ++ " are not supported"))
-                                  (Right _, Left undefineValue) -> Left undefineValue
-                                  (Left undefineValue, _) -> Left undefineValue
+                                  (Right (BoolVal b1), Right (BoolVal b2)) -> Right (BoolVal (op b1 b2) )
+                                  (Right b1, Right b2)                     -> Left (ErrorExpr "logicalOp" ("Logical Operations only work between two booleans"))
+                                  (Right _, Left undefineValue)            -> Left undefineValue
+                                  (Left undefineValue, _)                  -> Left undefineValue
