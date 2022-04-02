@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module REPL where
 
 import System.Console.Haskeline
@@ -8,158 +7,174 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans (lift)
 import Control.Monad.State.Strict (get, put, runStateT, StateT)
 
-type StateM = StateT State IO
+-- Copied from https://www.reddit.com/r/haskell/comments/1os0yq/haskeline_woes/
+-- Author: TheBB
+type StateM = StateT LState IO
 type InputM = InputT StateM
-data State = State {vars :: BTree, commands :: [String],
+
+-- the state keeping track of the variables, commands, functions and word list
+data LState = LState {vars :: BinTree, cmds :: [String],
                     functions :: [(Name, [Name], [Command])],
-                    wordList :: [String]}
+                    wrds :: [String]}
 
-initHLCompletionList :: [String]
-initHLCompletionList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "True", "False"]
+-- initialisation for haskeline tab completion list
+initHLList :: [String]
+initHLList = ["print", "def", "while", "if", "else", "toFloat(", "toInt(", "toString(", "quit", "True", "False"]
 
-initState :: State
-initState = State Leaf [] [("", [""], [])] initHLCompletionList
+-- initialisation for the state at the start of the program
+initLState :: LState
+initLState = LState Leaf [] [("", [""], [])] initHLList
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
 -- If it already exists, remove the old value
-updateVars :: Name -> Value -> BTree -> BTree
-updateVars _name _value Leaf = Node (_name, _value) Leaf Leaf
-updateVars _name _value (Node (name, value) ltree rtree)
-  | _name < name = Node (name, value) (updateVars _name _value ltree) rtree
-  | _name > name = Node (name, value) ltree (updateVars _name _value rtree)
-  | otherwise = Node (name, _value) ltree rtree
+-- The variables are stored in BinTree in some sense of alphabetic order
+updateVars :: Name -> Value -> BinTree -> BinTree
+updateVars name' value' Leaf = Node (name', value') Leaf Leaf
+updateVars name' value' (Node (name, value) binTreeL binTreeR)
+  | name' > name = Node (name, value) binTreeL (updateVars name' value' binTreeR)
+  | name' < name = Node (name, value) (updateVars name' value' binTreeL) binTreeR
+  | otherwise = Node (name, value') binTreeL binTreeR
 
--- Return a new set of variables with the given name removed
-dropVar :: Name -> BTree -> BTree
-dropVar _name Leaf = Leaf
-dropVar _name (Node (name, value) ltree rtree)
-  | _name < name = Node (name, value) (dropVar _name ltree) rtree
-  | _name > name = Node (name, value) ltree (dropVar _name rtree)
-  | otherwise = case (ltree, rtree) of
-    (Leaf, _) -> rtree
-    (_, Leaf) -> ltree
-    _ -> let (left_largest_var, left_largest_val) = largestVar ltree
-             largestVar tree = case tree of -- using "last (inorderTraversal tree)" or something like that is against the purpose of using binary search tree.
-                                    Node (name_, value_) _ Leaf -> (name_, value_)
-                                    Node (_, _) _ rtree -> largestVar rtree
-             in Node (left_largest_var, left_largest_val) (dropVar left_largest_var ltree) rtree
-
+-- Given a function name, variables and block of commands
+-- the function will be returned in form of [(function_name, [variables], [commands])]
 updateFunctions :: Name -> [Name] -> [Command] -> [(Name, [Name], [Command])] -> [(Name, [Name], [Command])]
-updateFunctions name _vars _commands [] = [(name, _vars, _commands)]
-updateFunctions name _vars _commands ((n, v, c): funs)
-  | name == n = (name, _vars, _commands) : funs
-  | otherwise = (n, v, c) : updateFunctions name _vars _commands funs
+-- if funcitons in LState is empty, the function will be returned in the formatted way
+updateFunctions name' vars' cmds' [] = [(name', vars', cmds')]
+updateFunctions name' vars' cmds' ((name, vars, cmds): funcs)
+-- if the function name exists in functions in LState, we will update it
+  | name' == name = (name', vars', cmds') : funcs
+--  otherwise we will move from left to right. Each recursion with one element less then the previous. (like (x:xs))
+  | otherwise = (name, vars, cmds) : updateFunctions name' vars' cmds' funcs
 
-process :: State -> Command -> InputT StateM State
-process st (Set var e) =
-  do
-    case eval (vars st) e of
-      Left (ExprErr expr err_msg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ err_msg)
-                                        return st -- error
-      Right Input -> do inpVal <- getInputLine "Input > "
-                        case inpVal of
-                         Just inp -> return (st {vars = updateVars var (StrVal inp) (vars st)})
-                         Nothing -> return (st {vars = updateVars var (StrVal "") (vars st)})
-      Right (FunCall name exprs) -> do val <- funCallVal st name exprs
-                                       case val of
-                                        Right eval_res -> return st {vars = updateVars var eval_res (vars st)}
-                                        Left (ExprErr expr err_msg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ err_msg)
-                                                                          return st -- error
-      Right eval_res -> do
-        let st' = st {vars = updateVars var eval_res (vars st)}
-        -- st' should include the variable set to the result of evaluating e
-        return st'
-process st (Print e) =
-  do
-    case eval (vars st) e of
-         Left (ExprErr expr err_msg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ err_msg)
-         Right Input -> do inpVal <- getInputLine "Input > "
-                           case inpVal of
-                                Just inp -> do outputStrLn inp
-                                Nothing -> do outputStrLn ""
-         Right (FunCall name exprs) -> do val <- funCallVal st name exprs
-                                          case val of
-                                            Right eval_res -> outputStrLn (show eval_res) -- how will it show a string
-                                            Left (ExprErr expr err_msg) -> do outputStrLn ("Error on " ++ expr ++ ": " ++ err_msg)
-         Right eval_res -> do
-           outputStrLn (show eval_res)
-    return st
+-- Given the state, function name and expressions, it will return an error or a value of the specified function
+funCallVal :: LState -> Name -> [Expr] -> InputM (Either Error Value)
+funCallVal st name exprs = let scope :: LState
+                               scope = st
+                               func :: [(Name, [Name], [Command])]
+                               func = filter (\(x, _, _) -> x == name) (functions st)
+                               setVals :: LState -> [Name] -> [Expr] -> InputM LState
+                               setVals lstate (v:vs) (expr:es) = do lstate' <- process lstate (Set v expr)
+                                                                    setVals lstate' vs es
+                               setVals lstate []     []     = return lstate
+                               in case func of
+                                       [] -> return (Left (ErrorExpr "FuncCall" "The function hasn't been defined"))
+                                       [(funcName, varsName, cmds)] -> if length exprs == length varsName && not(stdBlock cmds)
+                                                                          then do sState <- setVals scope varsName exprs
+                                                                                  (st', expr) <- rtnBlock (sState, Left (ErrorExpr "" "")) cmds
+                                                                                  case expr of
+                                                                                       Right expression -> return (eval (vars st') expression)
+                                                                                       Left (ErrorExpr expr errorMsg) -> return (Left (ErrorExpr expr errorMsg))
+                                                                       else return (Left (ErrorExpr "FuncCall" "Check if the function has a return statement and if the function contains the correct numbers of argumet"))
 
-process st (IfE e b1 b2) = case eval (vars st) e of
-  Right (BoolVal True)  -> do processBlock st b1
-  Right (BoolVal False) -> do processBlock st b2
-  _                    -> do outputStrLn "Invalid if conditional"
-                             return st
-process st (If e b1) = case eval (vars st) e of
-  Right (BoolVal True)  -> do processBlock st b1
-  Right (BoolVal False) -> do return st
-  _                     -> do outputStrLn "Invalid if conditional"
-                              return st
-
-process st (While e block) = loop st block e
-  where loop :: State -> [Command] -> Expr -> InputT StateM State
-        loop state cmds expr = case eval (vars state) expr of
-          Right (BoolVal True)  -> do st' <- processBlock state cmds
-                                      loop st' cmds expr
-          Right (BoolVal False) -> return state
-          _                    -> do outputStrLn "Invalid while conditional"
-                                     return state
-process st (Func name vars commands) = return st {functions = updateFunctions name vars commands (functions st)}
-process st (VoidFuncCall name exprs) = case func of
-  [] -> return st
-  [(fname, vnames, commands)] -> if length exprs == length vnames && blockIsVoid commands
-                                    then do sState <- assignVals scopedState vnames exprs
-                                            processBlock sState commands
-                                            return st
-                                 else return st
-  where scopedState :: State
-        scopedState = st
-        func :: [(Name, [Name], [Command])]
-        func = filter (\(x, _, _) -> x == name) (functions st)
-        assignVals :: State -> [Name] -> [Expr] -> InputT StateM State
-        assignVals state (v:vs) (e:es) = do state' <- process state (Set v e)
-                                            assignVals state' vs es
-        assignVals state []     []     = return state
-
-processBlock :: State -> [Command] -> InputT StateM State
+-- Given state and block of commands, the commands will be executed
+processBlock :: LState -> [Command] -> InputT StateM LState
+-- Execute the only one command
 processBlock st [cmd]   = do process st cmd
+-- execute the first command and execute the rest one by one
 processBlock st (cmd: cmds) = do st' <- process st cmd
                                  processBlock st' cmds
 processBlock st _           = return st
 
-processBlockRet :: (State, Either Error Expr) -> [Command] -> InputT StateM (State, Either Error Expr)
-processBlockRet (st, _) (Return e: _)   = return (st, Right e)
-processBlockRet (st, _) [cmd]   = do st' <- process st cmd
-                                     return (st', Left (ExprErr "Function call" "No return statement"))
-processBlockRet (st, _) (cmd: cmds) = do st' <- process st cmd
-                                         processBlockRet (st', Left (ExprErr "" "")) cmds
--- processBlockRet (st, _) _           = return st
+--block with return statement
+rtnBlock :: (LState, Either Error Expr) -> [Command] -> InputT StateM (LState, Either Error Expr)
+rtnBlock (st, _) (Return expr: _)   = return (st, Right expr)
+rtnBlock (st, _) [cmd]   = do st' <- process st cmd
+                              return (st', Left (ErrorExpr "FuncCall" "The function doesn't contain a return statement"))
+rtnBlock (st, _) (cmd: cmds) = do st' <- process st cmd
+                                  rtnBlock (st', Left (ErrorExpr "" "")) cmds
 
-blockIsVoid :: [Command] -> Bool
-blockIsVoid []            = True
-blockIsVoid (Return x: _) = False
-blockIsVoid (x: xs)       = blockIsVoid xs
+--standard block
+stdBlock :: [Command] -> Bool
+stdBlock []            = True
+stdBlock (Return x: _) = False
 
--- TODO: convert to either | Update Errors
-funCallVal :: State -> Name -> [Expr] -> InputT StateM (Either Error Value)
-funCallVal st name exprs = case fun of
-        [] -> return (Left (ExprErr "Function call" "No such function"))
-        [(fname, vnames, commands)] -> if length exprs == length vnames && not(blockIsVoid commands)
-                                          then do sState <- assignVals scopedState vnames exprs
-                                                  (st', e) <- processBlockRet (sState, Left (ExprErr "" "")) commands
-                                                  case e of
-                                                    Right expression -> return (eval (vars st') expression)
-                                                    Left (ExprErr expr err_msg) -> return (Left (ExprErr expr err_msg)) -- Should never happen
-                                       else return (Left (ExprErr "Function call" "Number of argument does not match or there is no return statement"))
-        where scopedState :: State
-              scopedState = st
-              fun :: [(Name, [Name], [Command])]
-              fun = filter (\(x, _, _) -> x == name) (functions st)
-              assignVals :: State -> [Name] -> [Expr] -> InputT StateM State
-              assignVals state (v:vs) (e:es) = do state' <- process state (Set v e)
-                                                  assignVals state' vs es
-              assignVals state []     []     = return state
+stdBlock (x: xs)       = stdBlock xs
+
+-- process the input command and return the updated state
+process :: LState -> Command -> InputT StateM LState
+process st (Set var expr) =
+  do
+    case eval (vars st) expr of
+         Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error : " ++ expr ++ ": " ++ errorMsg)
+                                              return st 
+         Right (FunCall name exprs) -> do val <- funCallVal st name exprs
+                                          case val of
+                                               Right eval_res -> return st {vars = updateVars var eval_res (vars st)}
+                                               Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error : " ++ expr ++ ": " ++ errorMsg)
+                                                                                    return st 
+         Right Input -> do inpVal <- getInputLine "Input > "
+                           case inpVal of
+                                Just input -> return (st {vars = updateVars var (StrVal input) (vars st)})
+                                Nothing -> return (st {vars = updateVars var (StrVal "") (vars st)})
+         Right eval_res -> do let st' = st {vars = updateVars var eval_res (vars st)}
+                                 in return st'
+
+-- process the print command
+process st (Print expr) =
+  do
+    case eval (vars st) expr of
+         Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error : " ++ expr ++ ": " ++ errorMsg)
+         Right (FunCall name exprs) -> do val <- funCallVal st name exprs
+                                          case val of
+                                            Left (ErrorExpr expr errorMsg) -> do outputStrLn ("Error : " ++ expr ++ ": " ++ errorMsg)
+                                            -- print the value of the evaluated results
+                                            Right eval_res -> outputStrLn (show eval_res) 
+         Right Input -> do inpVal <- getInputLine "Input > "
+                           case inpVal of
+                             -- print the value of the input
+                                Just input -> do outputStrLn input
+                                Nothing -> do outputStrLn ""
+        -- print the value of the evaluated results
+         Right eval_res -> do outputStrLn (show eval_res)
+    return st
+
+-- process if else statement
+process st (IfE expr t f) = case eval (vars st) expr of
+  Right (BoolVal True)  -> do processBlock st t
+  Right (BoolVal False) -> do processBlock st f
+  -- if the conditional statement is NOT valid since it doesn't return a boolean value
+  _                     -> do outputStrLn "Invalid if conditional"
+                              return st
+
+-- process if (without else) statement
+process st (If expr t) = case eval (vars st) expr of
+  Right (BoolVal True)  -> do processBlock st t
+  Right (BoolVal False) -> do return st
+  _                     -> do outputStrLn "Invalid if conditional"
+                              return st
+
+-- process the while loop
+process st (While expr block) = let loop :: LState -> [Command] -> Expr -> InputT StateM LState
+                                    loop lstate cmds expr = case eval (vars lstate) expr of
+                                                                 Right (BoolVal True)  -> do st' <- processBlock lstate cmds
+                                                                                             loop st' cmds expr
+                                                                --  if the conditional statement is NOT valid since it doesn't return a boolean value
+                                                                 Right (BoolVal False) -> return lstate
+                                                                 _                    -> do outputStrLn "Invalid while conditional"
+                                                                                            return lstate
+                                    in loop st block expr
+
+-- update functions of the LState
+process st (Func name vars cmds) = return st {functions = updateFunctions name vars cmds (functions st)}
+
+-- process the specified function
+process st (FuncCall name exprs) = let scope :: LState
+                                       scope = st
+                                       func :: [(Name, [Name], [Command])]
+                                       func = filter (\(a, _, _) -> a == name) (functions st)
+                                       --  set variables for the function scope one by one
+                                       setVals :: LState -> [Name] -> [Expr] -> InputT StateM LState
+                                       setVals lstate (v:vs) (expr:exps) = do lstate' <- process lstate (Set v expr)
+                                                                              setVals lstate' vs exps
+                                       setVals lstate [][] = return lstate
+                                       in case func of
+                                               [] -> return st
+                                               [(funcName, varsName, cmds)] -> if length exprs == length varsName && stdBlock cmds
+                                                                                  then do sState <- setVals scope varsName exprs
+                                                                                          processBlock sState cmds
+                                                                                          return st
+                                                                               else return st
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
@@ -167,25 +182,41 @@ funCallVal st name exprs = case fun of
 -- 'process' will call 'repl' when done, so the system loops.
 
 repl :: InputM ()
+-- get the current state of the program
 repl = do st <- lift get
-          inp <- case commands st of
+-- check the commands in the state
+          input <- case cmds st of
             [] -> getInputLine "> "
-            (x:xs) -> do lift $ put st {commands = xs}
+            (x:xs) -> do lift $ put st {cmds = xs}
                          return (Just x)
           st <- lift get
-          case inp of
+          case input of
             Nothing    -> return ()
+            -- parse the user input
             Just input ->
                 case parse pStatement input of
-                    [(cmd, "")] -> -- Must parse entire input
+                    [(cmd, "")] -> 
+                      -- check the type of command and process accordingly
                       case cmd of
-                        (Set var e) -> do st' <- process st cmd
-                                          lift $ put st' {wordList = var : wordList st'}
-                                          repl
+                        (Import filepath) -> do text <- lift $ lift (readFile filepath)
+                                                lift $ put st {cmds = lines text ++ cmds st}
+                                                repl
+                        (Set var expr) -> do st' <- process st cmd
+                                             if var `notElem` wrds st'
+                                              then do lift $ put st' {wrds = var : wrds st'}
+                                                      repl
+                                             else do lift $ put st' {wrds = wrds st'}
+                                                     repl
+                        -- quit the main function, still in >Main.hs
                         Quit -> return()
+                        -- process the specified function name
                         (Func name _ _)    -> do st' <- process st cmd
-                                                 lift $ put st' {wordList = (name ++ "(") : wordList st'}
-                                                 repl
+                                                 if (name ++ "(") `notElem` wrds st
+                                                    then do lift $ put st' {wrds = (name ++ "(") : wrds st'}
+                                                            repl
+                                                 else do lift $ put st' {wrds = wrds st'}
+                                                         repl
+                        -- print the expression
                         (Expr expr) -> do process st (Print expr)
                                           repl
                         _ -> do st' <- process st cmd
