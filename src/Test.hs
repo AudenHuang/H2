@@ -100,7 +100,6 @@ prop_parseAbsFlt :: Float -> Bool
 prop_parseAbsFlt flt | flt < 0.1 = True --Must force True - read report
                      | otherwise = fst( head( parse pExpr ("|" ++ show flt ++ "|"))) == Abs (Val (FltVal flt))
 
--- perhaps https://www.youtube.com/watch?v=G7LJC9vJluU
 -- Checks that concatenate correctly parses
 prop_parseConcat :: String -> String -> Bool
 prop_parseConcat s1 s2 | '\"' `elem` s1 || '\"' `elem` s2 = True
