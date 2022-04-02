@@ -133,7 +133,7 @@ dec                           =  do xs <- many1 alphanum
 
 dec2                          :: Parser String 
 dec2                          =  do xs <- many1 digit
-                                   return xs
+                                    return xs
 
 -- Parse the integer (numbers until reacing '.') and save it to i
 -- Parse the decimal number (numbers after the '.') and save it to d
@@ -460,5 +460,4 @@ pCSV vs = (do symbol ","
               pCSV (v:vs))
              ||| (do symbol ")"
                      return (reverse vs))
-
 
