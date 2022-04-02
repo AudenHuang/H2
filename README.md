@@ -8,6 +8,8 @@ QuickCheck must be installed to run the tests for the scripting language. We rec
 with the following command.
 
     $ cabal install QuickCheck
+    $ cabal install mtl
+    $ cabal install haskeline
     
 ## Scripting Language
 To run the scripting language, cd to the Haskell folder and run the following commands
