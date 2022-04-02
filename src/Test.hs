@@ -200,7 +200,7 @@ prop_evalBoolOpStr s1 s2 (Bop o) s | '\"' `elem` s1 || '\"' `elem` s2 = True
 
 -- Checks that eval function returns the correct value for all logical operation with two boolean
 prop_evalBoolOpFlt  :: Bool -> Bool -> Lop -> Int -> Bool
-prop_evalBoolOpFlt b1 b2 (Lop o) s =  case eval Leaf( fst( head( parse pOr((show x) ++ (genSpc s) ++ o ++ (genSpc s) ++ (show y)))))) of
+prop_evalBoolOpFlt b1 b2 (Lop o) s =  case eval Leaf( fst( head( parse pOr((show b1) ++ (genSpc s) ++ o ++ (genSpc s) ++ (show b2)))))) of
                                            Right (BoolVal a) -> True
                                            _ -> False
 
