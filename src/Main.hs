@@ -8,8 +8,7 @@ import Parsing
 import Expr
 import REPL
 
--- Copied from https://www.reddit.com/r/haskell/comments/1os0yq/haskeline_woes/
--- Author: TheBB
+-- Reference: https://www.reddit.com/r/haskell/comments/1os0yq/haskeline_woes/
 findCompletion :: String -> StateM [Completion]
 findCompletion s = do map simpleCompletion . filter (s `isPrefixOf`) . wrds <$> get
 

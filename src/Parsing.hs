@@ -187,29 +187,29 @@ float                         :: Parser Float
 float                         =  token parseFloat
 
 
--------------------- Statements Parser -----------------
-pStatement :: Parser Command
-pStatement = (do pIfE)
-             ||| (do pIf)
-             ||| (do pWhile)
-             ||| (do pQuit)
-             ||| (do pImport)
-             ||| (do pSet)
-             ||| (do pPrint)
-             ||| (do pDef)
-             ||| (do pFuncCall)
-             ||| (do pReturn)
-             ||| (do pSExpr)
+-------------------- Commands Parser -----------------
+pCommand :: Parser Command
+pCommand = (do pIfE)
+            ||| (do pIf)
+            ||| (do pWhile)
+            ||| (do pQuit)
+            ||| (do pImport)
+            ||| (do pSet)
+            ||| (do pPrint)
+            ||| (do pDef)
+            ||| (do pFuncCall)
+            ||| (do pReturn)
+            ||| (do pSExpr)
 
--- Block of statements (if while functions)    
+-- Block of commands (if while functions)    
 pBlock :: Parser [Command]
 pBlock = do symbol "{"
-            s <- many pStatement
+            s <- many pCommand
             symbol "}"
             return s
 
--- Parsers for different type of statment
--- If-else statments
+-- Parsers for different type of coomand
+-- If-else 
 pIfE :: Parser Command
 pIfE = do string "if"
           space
@@ -218,7 +218,7 @@ pIfE = do string "if"
           string "else"
           eBlock <- pBlock
           return (IfE expression block eBlock)
--- If statments
+-- If 
 pIf :: Parser Command
 pIf = do string "if"
          space
@@ -226,7 +226,7 @@ pIf = do string "if"
          block <- pBlock
          return (If expression block)
 
--- While statments
+-- While 
 pWhile :: Parser Command
 pWhile = do string "while"
             space
@@ -235,7 +235,7 @@ pWhile = do string "while"
             block <- pBlock
             return (While expression block)
 
--- Import statments
+-- Import 
 pImport :: Parser Command
 pImport = do string "import"
              space
@@ -257,7 +257,7 @@ pQuit :: Parser Command
 pQuit = do string "quit"
            return Quit
 
--- Print statements
+-- Print 
 pPrint :: Parser Command
 pPrint = do string "print"
             space
@@ -267,14 +267,14 @@ pPrint = do string "print"
                     return (Print e))
 
 
--- Return statements
+-- Return 
 pReturn :: Parser Command
 pReturn = do string "return"
              space
              e <- pExpr
              return (Return e)
 
--- Expression statements
+-- Expression 
 pSExpr :: Parser Command
 pSExpr = (do Expr <$> pOr) ||| (do Expr <$> pExpr)
 

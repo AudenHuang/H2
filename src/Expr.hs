@@ -97,7 +97,7 @@ eval vars (Concat x y) = case (eval vars x, eval vars y) of
 
 eval vars InputExpr         = Right Input
 
---evaluating toString, toInt and toString and return a value in the correct Value "type" if thers's no error else return left
+--Evaluating toString, toInt and toString and return a value in the correct Value "type" if thers's no error else return left
 eval vars (FuncCallR name args) = let toString :: [Expr] -> Either Error Value
                                       toString [expr]  = case eval vars expr of
                                                               Right (IntVal i) -> Right (StrVal (show i))

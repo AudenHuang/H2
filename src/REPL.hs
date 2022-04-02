@@ -7,8 +7,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans (lift)
 import Control.Monad.State.Strict (get, put, runStateT, StateT)
 
--- Copied from https://www.reddit.com/r/haskell/comments/1os0yq/haskeline_woes/
--- Author: TheBB
+-- Reference:  https://www.reddit.com/r/haskell/comments/1os0yq/haskeline_woes/
 type StateM = StateT LState IO
 type InputM = InputT StateM
 
@@ -194,7 +193,7 @@ repl = do st <- lift get
             Nothing    -> return ()
             -- parse the user input
             Just input ->
-                case parse pStatement input of
+                case parse pCommand input of
                     [(cmd, "")] -> 
                       -- check the type of command and process accordingly
                       case cmd of
