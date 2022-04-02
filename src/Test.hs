@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Test where
+module Main where
 
 import REPL
 import Expr
