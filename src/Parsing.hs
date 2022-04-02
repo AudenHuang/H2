@@ -144,7 +144,7 @@ parseFloat                    =  do i <- int
                                     d <- dec2
                                     string "e-"
                                     e <- int
-                                    return (read (show i ++ "." ++ d)/(10^abs e))
+                                    return (1 / ((10^abs e)/(read (show i ++ "." ++ d))))
                                  ||| do char '-'
                                         i <- int
                                         char '.'
